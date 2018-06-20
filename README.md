@@ -1,11 +1,9 @@
 
-# pix2pix
-[[Project]](https://phillipi.github.io/pix2pix/)   [[Arxiv]](https://arxiv.org/abs/1611.07004)
-[[PyTorch]](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix)
+# EmptyCities
 
-Torch implementation for learning a mapping from input images to output images, for example:
+Torch implementation for learning a mapping from input images that contain dynamic objects to output images which are static, for example:
 
-<img src="imgs/examples.jpg" width="900px"/>
+<img src="imgs/DynamicObjectsInvariantSpace.jpg" width="900px"/>
 
 Image-to-Image Translation with Conditional Adversarial Networks  
  [Phillip Isola](http://web.mit.edu/phillipi/), [Jun-Yan Zhu](https://people.eecs.berkeley.edu/~junyanz/), [Tinghui Zhou](https://people.eecs.berkeley.edu/~tinghuiz/), [Alexei A. Efros](https://people.eecs.berkeley.edu/~efros/)   
