@@ -5,13 +5,9 @@ Torch implementation for learning a mapping from input images that contain dynam
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
-Image-to-Image Translation with Conditional Adversarial Networks  
- [Phillip Isola](http://web.mit.edu/phillipi/), [Jun-Yan Zhu](https://people.eecs.berkeley.edu/~junyanz/), [Tinghui Zhou](https://people.eecs.berkeley.edu/~tinghuiz/), [Alexei A. Efros](https://people.eecs.berkeley.edu/~efros/)   
- CVPR, 2017.
-
-On some tasks, decent results can be obtained fairly quickly and on small datasets. For example, to learn to generate facades (example shown above), we trained on just 400 images for about 2 hours (on a single Pascal Titan X GPU). However, for harder problems it may be important to train on far larger datasets, and for many hours or even days.
-
-**Note**: Please check out our [PyTorch](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix) implementation for pix2pix and CycleGAN. The PyTorch version is under active development and can produce results comparable or better than this Torch version.
+Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space  
+[Berta Bescos], [Cesar Cadena], [Jose Neira], [Roland Siegwart]   
+CoRL, 2018.
 
 ## Setup
 
@@ -28,8 +24,8 @@ luarocks install https://raw.githubusercontent.com/szym/display/master/display-s
 ```
 - Clone this repo:
 ```bash
-git clone git@github.com:phillipi/pix2pix.git
-cd pix2pix
+git clone git@github.com:BertaBescos/EmptyCities.git
+cd EmptyCities
 ```
 - Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
 ```bash
