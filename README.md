@@ -33,7 +33,15 @@ bash ./datasets/download_dataset.sh facades
 ```
 - Train the model
 ```bash
-DATA_ROOT=./datasets/facades name=facades_generation which_direction=BtoA th train.lua
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask name=mGAN th train.lua
+```
+- If we want to add real data with a probability of 0.5 from epoch 50 on:
+```bash
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask NSYNTH_DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask name=mGAN add_real_data=1 epoch_synth=50 pNonSynth=0.5 th train.lua
+```
+- If we do not have the masks:
+```bash
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBFullMask NSYNTH_DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/FullMask name=SS add_real_data=1 epoch_synth=50 pNonSynth=0.5 th train_ss.lua
 ```
 - (CPU only) The same training command without using a GPU or CUDNN. Setting the environment variables ```gpu=0 cudnn=0``` forces CPU only
 ```bash
@@ -46,7 +54,14 @@ th -ldisplay.start 8000 0.0.0.0
 
 - Finally, test the model:
 ```bash
-DATA_ROOT=./datasets/facades name=facades_generation phase=val th test.lua
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask name=mGAN which_epoch=50 phase=test th test.lua
+- If we do not have the ground-truth:
+```bash
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask/val name=mGAN which_epoch=50 phase=val th inference.lua
+```
+- If we do not have the masks:
+```bash
+DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask/val name=mGAN which_epoch=50 phase=val th inference_ss.lua
 ```
 The test results will be saved to an html file here: `./results/facades_generation/latest_net_G_val/index.html`.
 
