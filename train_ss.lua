@@ -5,11 +5,11 @@
 
 require 'torch'
 require 'nn'
-require 'cudnn'
 require 'optim'
 util = paths.dofile('util/util.lua')
 require 'image'
 require 'models'
+require 'cudnn'
 require 'imgraph'
 
 opt = {
@@ -25,30 +25,22 @@ opt = {
    input_mask_nc = 1,	   -- #  of input mask channels --bbescos
    input_gan_nc = 1,	   -- #  of input image channels to the pix2pix architecture
    output_gan_nc = 1,	   -- #  of output image channels from the pix2pix architecture
-   maskD = 1,		   -- Penalize Dicriminator more on mask
+   mGAN = 1,		   -- Penalize Dicriminator more on mask
    gamma = 2,
    niter = 200,            -- #  of iter at starting learning rate
    lr = 0.0002,            -- initial learning rate for adam
    beta1 = 0.5,            -- momentum term of adam
    ntrain = math.huge,     -- #  of examples per epoch. math.huge for full dataset
-   flip = 1,               -- if flip the images for data argumentation
-   gaussian_blur = 0,	   -- data augmentation
-   gaussian_noise = 0,     -- data augmentation
-   brightness = 0,	   -- data augmentation
-   contrast = 0, 	   -- data augmentation
-   saturation = 0,         -- data augmentation
-   rotation = 0,	   -- data augmentation
-   dropout = 0,		   -- data augmentation
-   add_non_synthetic_data = 1,      -- train with real and synthetic data for better generalization
-   epoch_synth = 0,	   -- train with real and synthetic data
-   pNonSynth = 0.05,
+   data_aug = 0,	   -- data augmentation
+   add_real_data = 0,      -- train with real and synthetic data
+   epoch_synth = 50,	   -- train with real and synthetic data
+   pNonSynth = 0.5,	   -- train with real and synthetic data
    display = 1,            -- display samples while training. 0 = false
    display_id = 10,        -- display window id.
    display_plot = 'errL1',    -- which loss values to plot over time. Accepted values include a comma seperated list of: errL1, errG, and errD
    val_display_plot = 'val_errL1',
    gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
    name = '',              -- name of the experiment, should generally be passed on the command line
-   which_direction = 'AtoB',    -- AtoB or BtoA
    phase = 'train',             -- train, val, test, nsynth, etc
    preprocess = 'regular',      -- for special purpose preprocessing, e.g., for colorization, change this (selects preprocessing functions in util.lua)
    nThreads = 2,                -- # threads for loading data
@@ -70,6 +62,7 @@ opt = {
    which_model_netG = 'unet',  -- selects model to use for netG
    n_layers_D = 0,             -- only used if which_model_netD=='n_layers'
    lambda = 100,               -- weight on L1 term in objective
+   lambdaSS = 1,		       -- weight on SS term in objective
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -85,6 +78,7 @@ end
 local input_nc = opt.input_nc
 local output_nc = opt.output_nc
 local input_mask_nc = opt.input_mask_nc --bbescos
+local mGAN = opt.mGAN
 local input_gan_nc = opt.input_gan_nc
 local output_gan_nc = opt.output_gan_nc
 
@@ -93,16 +87,8 @@ local idx_A = nil
 local idx_B = nil
 local idx_C = nil --bbescos
 
-if opt.which_direction=='AtoB' then
-    idx_A = {1, input_nc}
-    idx_B = {input_nc + 1, input_nc + output_nc}
-elseif opt.which_direction=='BtoA' then
-    idx_A = {input_nc+1, input_nc+output_nc}
-    idx_B = {1, input_nc}
-else
-    error(string.format('bad direction %s',opt.which_direction))
-end
-
+idx_A = {1, input_nc}
+idx_B = {input_nc + 1, input_nc + output_nc}
 idx_C = {input_nc + output_nc + 1, input_nc + output_nc + input_mask_nc}
 
 if opt.display == 0 then opt.display = false end
@@ -123,10 +109,10 @@ local data = data_loader.new(opt.nThreads, opt)
 print("Dataset Size: ", data:size())
 
 opt.phase = 'val'
-local val_data = data_loader.new(opt.nThreads, opt)
-print("Validation Dataset Size: ", val_data:size())
+local valid_data = data_loader.new(opt.nThreads, opt)
+print("Validation Dataset Size: ", valid_data:size())
 
-if opt.add_non_synthetic_data == 1 then
+if opt.add_real_data == 1 then
     opt.phase = 'train'
     nsynth_data_loader = paths.dofile('data/data_nsynthSS.lua') --bbescos
     nsynth_train_data = nsynth_data_loader.new(opt.nThreads, opt) --bbescos
@@ -180,11 +166,10 @@ function defineD(input_nc, output_nc, ndf)
     else
         input_nc_tmp = 0 -- only penalizes structure in output channels
     end
-    
-    if     opt.which_model_netD == "basic" then 
+    if opt.which_model_netD == "basic" then 
 	netD = defineD_basic(input_nc_tmp, output_nc, ndf)
     elseif opt.which_model_netD == "n_layers" then 
-	netD = defineD_n_layers(input_nc_tmp, output_nc, ndf, opt.n_layers_D)
+	netD = defineD_n_layers(input_nc_tmp, output_nc, ndf, opt.n_layers_D)  
     else error("unsupported netD model")
     end
     
@@ -206,8 +191,8 @@ else
    netD = defineD(input_gan_nc, output_gan_nc, ndf)
 end
 
-print('netG: ', netG)
-print('netD: ', netD)
+print(netG)
+print(netD)
 
 local criterion = nn.BCECriterion() --This is the Adversarial Criterion for the RGB image
 local criterionAE = nn.AbsCriterion() --This is the L1 Loss for the RGB image
@@ -248,33 +233,23 @@ optimStateSS = {
    learningRate = opt.lr,
    beta1 = opt.beta1,
 }
-optimStateDynSS = {
-   learningRate = opt.lr,
-   beta1 = opt.beta1,
-}
 ----------------------------------------------------------------------------
-local real_color_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-local val_real_color_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-local nsynth_real_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-local nsynth_val_real_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-local real_color_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local val_real_color_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local nsynth_val_real_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local nsynth_real_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
+
+local realRGB_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
+local val_realRGB_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
+local realRGB_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
+local val_realRGB_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
 local val_real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
-local nsynth_val_real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
-local nsynth_real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
 local fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local val_fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local nsynth_fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local nsynth_val_fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local real_AB = torch.Tensor(opt.batchSize, output_nc + input_nc*opt.condition_GAN, opt.fineSize, opt.fineSize)
 local fake_AB = torch.Tensor(opt.batchSize, output_nc + input_nc*opt.condition_GAN, opt.fineSize, opt.fineSize)
-local errD, errG, errL1 = 0, 0, 0, 0
+local errD, errG, errL1 = 0, 0, 0
 local epoch_tm = torch.Timer()
 local tm = torch.Timer()
 local data_tm = torch.Timer()
+
 ----------------------------------------------------------------------------
 
 -- integrate semantic segmentation model
@@ -288,34 +263,29 @@ w[1][{{1,12}}] = -8/20 -- Static
 w[1][{{13,20}}] = 12/20 -- Dynamic
 w[2]:fill(0)
 netDynSS:add(nn.SoftMax())
-netDynSS:add(convDyn)
+netDynSS:add(convDyn):add(nn.MulConstant(100))
 netDynSS:add(nn.Tanh())
 
 print('netSS: ', netSS)
 print('netDynSS: ', netDynSS)
+
 ----------------------------------------------------------------------------
 
 if opt.gpu > 0 then
    print('transferring to gpu...')
    require 'cunn'
    cutorch.setDevice(opt.gpu)
-   real_color_A = real_color_A:cuda();
-   val_real_color_A = val_real_color_A:cuda();
-   nsynth_real_A = nsynth_real_A:cuda();
-   nsynth_val_real_A = nsynth_val_real_A:cuda();
-   real_color_B = real_color_B:cuda(); fake_B = fake_B:cuda();
-   val_real_color_B = val_real_color_B:cuda(); val_fake_B = val_fake_B:cuda();
-   nsynth_real_B = nsynth_real_B:cuda(); nsynth_fake_B = nsynth_fake_B:cuda();
-   nsynth_val_real_B = nsynth_val_real_B:cuda(); nsynth_val_fake_B = nsynth_val_fake_B:cuda();
+   realRGB_A = realRGB_A:cuda();
+   val_realRGB_A = val_realRGB_A:cuda();
+   realRGB_B = realRGB_B:cuda(); fake_B = fake_B:cuda();
+   val_realRGB_B = val_realRGB_B:cuda(); val_fake_B = val_fake_B:cuda();
    real_C = real_C:cuda();
    val_real_C = val_real_C:cuda();
-   nsynth_real_C = nsynth_real_C:cuda();
-   nsynth_val_real_C = nsynth_val_real_C:cuda();
    real_AB = real_AB:cuda(); fake_AB = fake_AB:cuda();
    if opt.cudnn==1 then
       netG = util.cudnn(netG); netD = util.cudnn(netD);
    end
-   netD:cuda(); netG:cuda(); netDynSS:cuda(); netSS:cuda(); criterion:cuda(); criterionAE:cuda(); criterionSS:cuda();
+   netD:cuda(); netG:cuda(); netDynSS:cuda(); criterion:cuda(); criterionAE:cuda(); criterionSS:cuda();
    print('done')
 else
    print('running model on CPU')
@@ -324,109 +294,98 @@ end
 local parametersD, gradParametersD = netD:getParameters()
 local parametersG, gradParametersG = netG:getParameters()
 local parametersSS, gradParametersSS = netSS:getParameters()
-local parametersDynSS, gradParametersDynSS = netDynSS:getParameters()
 
 if opt.display then disp = require 'display' end
-
---RGB colors per label
-trainIdColors = {{0,0,0},{128,64,128},{244,35,232},
-                {70,70,70},{102,102,156},{190,153,153},
-                {153,153,153},{250,170,30},{220,220,0},
-                {107,142,35},{152,251,152},{70,130,180},
-                {220,20,60},{255,0,0},{0,0,142},
-                {0,0,70},{0,60,100},{0,80,100},
-                {0,0,230},{119,11,32}}
-local colormap = imgraph.colormap(trainIdColors)
 
 function createRealFake()
     -- load real
     data_tm:reset(); data_tm:resume()
-    local real_data, data_path = data:getBatch()
-    local val_data, val_data_path = val_data:getBatch()    
-    if synth_label == 0 then
+    if synth_label == 1 then
+    	real_data, data_path = data:getBatch()
+    	val_data, val_data_path = valid_data:getBatch()
+    elseif synth_label == 0 then
 	nsynth_data, nsynth_data_path = nsynth_train_data:getBatch()
 	nsynth_val_data, nsynth_val_data_path = nsynth_valid_data:getBatch()
     end
     data_tm:stop()
 
-    real_color_A:copy(real_data[{ {}, idx_A, {}, {} }])
-    real_color_B:copy(real_data[{ {}, idx_B, {}, {} }])	
-    real_C:copy(real_data[{ {}, idx_C, {}, {} }]) --1 channel with all the classes per pixel
-    real_C_ERFNet = torch.Tensor(1,20,real_C:size(3),real_C:size(4)):zero():add(-1)
-    for i = 1, 20 do
-	mat = real_C[1]:eq(i)
-        mat = mat:byte()
-	real_C_ERFNet[1][i][mat] = 1
+    if synth_label == 1 then
+    	realRGB_A:copy(real_data[{ {}, idx_A, {}, {} }])
+    	realRGB_B:copy(real_data[{ {}, idx_B, {}, {} }])
+    	if input_mask_nc == 1 then
+	   real_C:copy(real_data[{ {}, idx_C, {}, {} }])
+	   real_C_ERFNet = torch.Tensor(1,20,real_C:size(3),real_C:size(4)):zero():add(-1)
+    	   for i = 1, 20 do
+	   	mat = real_C[1]:eq(i)
+           	mat = mat:byte()
+	   	real_C_ERFNet[1][i][mat] = 1
+    	   end
+    	   real_C_ERFNet = real_C_ERFNet:cuda() --20 channels
+    	end
+    	val_realRGB_A:copy(val_data[{ {}, idx_A, {}, {} }])
+    	val_realRGB_B:copy(val_data[{ {}, idx_B, {}, {} }])
+    	if input_mask_nc == 1 then
+	   val_real_C:copy(val_data[{ {}, idx_C, {}, {} }])
+    	end
+    elseif synth_label == 0 then
+       	realRGB_A:copy(nsynth_data[{ {}, idx_A, {}, {} }])
+       	realRGB_B:copy(nsynth_data[{ {}, idx_B, {}, {} }])
+       	if input_mask_nc == 1 then
+	   real_C:copy(nsynth_data[{ {}, idx_C, {}, {} }])
+       	end
+       	val_realRGB_A:copy(nsynth_val_data[{ {}, idx_A, {}, {} }])
+	val_realRGB_B:copy(nsynth_val_data[{ {}, idx_B, {}, {} }])
+	if input_mask_nc == 1 then
+	   val_real_C:copy(nsynth_val_data[{ {}, idx_C, {}, {} }])
+	end
     end
-    real_C_ERFNet = real_C_ERFNet:cuda()
-
-    val_real_color_A:copy(val_data[{ {}, idx_A, {}, {} }])
-    val_real_color_B:copy(val_data[{ {}, idx_B, {}, {} }])
-    val_real_C:copy(val_data[{ {}, idx_C, {}, {} }])
-
-    if synth_label == 0 then
-	nsynth_real_A:copy(nsynth_data[{ {}, idx_A, {}, {} }])
-	nsynth_real_B:copy(nsynth_data[{ {}, idx_B, {}, {} }])
-	nsynth_real_C:copy(nsynth_data[{ {}, idx_C, {}, {} }])
-	nsynth_val_real_A:copy(nsynth_val_data[{ {}, idx_A, {}, {} }])
-	nsynth_val_real_B:copy(nsynth_val_data[{ {}, idx_B, {}, {} }])
-	nsynth_val_real_C:copy(nsynth_val_data[{ {}, idx_C, {}, {} }])
-    end
-
-    if synth_label == 0 then
-	real_color_A = nsynth_real_A:clone()
-	real_color_B = nsynth_real_B:clone()
-	real_C = nsynth_real_C:clone()
-	val_real_color_A = nsynth_val_real_A:clone()
-	val_real_color_B = nsynth_val_real_B:clone()
-	val_real_C = nsynth_val_real_C:clone()
-    end
-
-    -- prepare data to forward
     
-    local input = real_color_A:clone()
-    input = input:add(1):mul(0.5)
-    input[1][1] = real_color_A[1][3]:add(1):mul(0.5)
-    input[1][3] = real_color_A[1][1]:add(1):mul(0.5)
-    fake_C = netSS:forward(input)      
+    -- crete mask
 
+    if synth_label == 0 then
+    	realBGR_A = realRGB_A:clone()
+    	realBGR_A = realBGR_A:add(1):mul(0.5)
+    	realBGR_A[1][1] = realRGB_A[1][3]:add(1):mul(0.5)
+    	realBGR_A[1][3] = realRGB_A[1][1]:add(1):mul(0.5)
+    	fake_C = netSS:forward(realBGR_A) --20 channels
+    elseif synth_label == 1 then
+	fake_C = real_C_ERFNet:clone()
+    end 
     _,winner = fake_C:squeeze():max(1)
     winner:resize(1,winner:size(1),winner:size(2),winner:size(3))
-    
     dyn_mask = netDynSS:forward(fake_C)
 
-       
-    -- create fake   
+   -- convert A and B to gray scale
+    realGray_A = image.rgb2y(realRGB_A[1]:float())
+    realGray_A = realGray_A:cuda()
+    realGray_A = realGray_A:resize(1,realGray_A:size(1),realGray_A:size(2),realGray_A:size(3))
+    realGray_B = image.rgb2y(realRGB_B[1]:float())
+    realGray_B = realGray_B:cuda()
+    realGray_B = realGray_B:resize(1,realGray_B:size(1),realGray_B:size(2),realGray_B:size(3))
+    val_realGray_A = image.rgb2y(val_realRGB_A[1]:float())
+    val_realGray_A = val_realGray_A:cuda()
+    val_realGray_A = val_realGray_A:resize(1,val_realGray_A:size(1),val_realGray_A:size(2),val_realGray_A:size(3))
+    val_realGray_B = image.rgb2y(val_realRGB_B[1]:float())
+    val_realGray_B = val_realGray_B:cuda()
+    val_realGray_B = val_realGray_B:resize(1,val_realGray_B:size(1),val_realGray_B:size(2),val_realGray_B:size(3))
 
-    -- convert A and B to gray scale
-    real_gray_A = image.rgb2y(real_color_A[1]:float())
-    real_gray_A = real_gray_A:cuda()
-    real_gray_A = real_gray_A:resize(1,real_gray_A:size(1),real_gray_A:size(3),real_gray_A:size(3))
-    real_gray_B = image.rgb2y(real_color_B[1]:float())
-    real_gray_B = real_gray_B:cuda()
-    real_gray_B = real_gray_B:resize(1,real_gray_B:size(1),real_gray_B:size(3),real_gray_B:size(3))
-    val_real_gray_A = image.rgb2y(val_real_color_A[1]:float())
-    val_real_gray_A = val_real_gray_A:cuda()
-    val_real_gray_A = val_real_gray_A:resize(1,val_real_gray_A:size(1),val_real_gray_A:size(3),val_real_gray_A:size(3))
-    val_real_gray_B = image.rgb2y(val_real_color_B[1]:float())
-    val_real_gray_B = val_real_gray_B:cuda()
-    val_real_gray_B = val_real_gray_B:resize(1,val_real_gray_B:size(1),val_real_gray_B:size(3),val_real_gray_B:size(3))
+    -- create fake
 
     if opt.condition_GAN==1 then
-	real_AB = torch.cat(real_gray_A,real_gray_B,2)
+	real_AB = torch.cat(realGray_A,realGray_B,2)
     else
-        real_AB = real_gray_B -- unconditional GAN, only penalizes structure in B
+        real_AB = realGray_B -- unconditional GAN, only penalizes structure in B
     end   
 
-    if synth_label == 1 then
-    	fake_B = netG:forward(torch.cat(real_gray_A,dyn_mask,2))
-    else
-	aux = dyn_mask:zero()
-	fake_B = netG:forward(torch.cat(real_gray_A,aux,2))
+    if input_mask_nc == 0 then
+       fake_B = netG:forward(realGray_A)
+    end
+    if input_mask_nc == 1 then
+       fake_B = netG:forward(torch.cat(realGray_A,dyn_mask,2))
     end
 
     if opt.condition_GAN==1 then
-	fake_AB = torch.cat(real_gray_A,fake_B,2)
+	fake_AB = torch.cat(realGray_A,fake_B,2)
     else
         fake_AB = fake_B -- unconditional GAN, only penalizes structure in B
     end
@@ -439,72 +398,117 @@ local fDx = function(x)
     netG:apply(function(m) if torch.type(m):find('Convolution') then m.bias:zero() end end)
     
     gradParametersD:zero()
-    
+
     -- Real
-    local output = netD:forward(real_AB) -- Bajar el valor de la zona de la mascara  
+    local output = netD:forward(real_AB) -- 1x1x30x30  
+    label = torch.FloatTensor(output:size()):fill(real_label)
+    if opt.gpu>0 then 
+       label = label:cuda()
+    end
 
     if synth_label == 1 then
-        if opt.maskD == 1 then
-    	   mask_C = dyn_mask:float()
-    	   mask_C:resize(mask_C:size(3), mask_C:size(4))
-    	   mask_C = image.scale(mask_C, output:size(3), output:size(4)) -- min=-1 y max=1
-    	   mask_C = mask_C:add(1):mul(0.5)
-    	   mask_C[mask_C:gt(0)] = 1
-    	   mask_C:resize(1, 1, mask_C:size(1), mask_C:size(1))
-    	   if opt.gpu > 0 then    
-	      mask_C = mask_C:cuda()
-    	   end
-	   output[mask_C:eq(1)] = output[mask_C:eq(1)]:mul(-1):add(1):mul(-opt.gamma):add(1)
-	   output[output:lt(0)] = 0
-        end
-
-        label = torch.FloatTensor(output:size()):fill(real_label)
-        if opt.gpu>0 then 
-    	   label = label:cuda()
-        end
-        errD_real = criterion:forward(output, label)
-        local df_do = criterion:backward(output, label)
-        netD:backward(real_AB, df_do)
+        if mGAN == 1 then
+    	   m = real_C:float():resize(real_C:size(3), real_C:size(4))
+    	   m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+    	   m[m:gt(0)] = 1
+    	   m:resize(1, 1, m:size(1), m:size(2))
+	   local layer1 = nn.CMul(output:size())
+	   local term_layer1 = m:clone():mul(opt.gamma-1):add(1)
+	   layer1.weight = term_layer1
+	   local layer2 = nn.CAdd(output:size())
+	   local term_layer2 = m:clone():mul(1-opt.gamma)
+	   layer2.bias = term_layer2
+	   local layer3 = nn.ReLU()
+	   if opt.gpu > 0 then
+		layer1 = layer1:cuda()
+		layer2 = layer2:cuda()
+		layer3 = layer3:cuda()
+	   end
+	   local mGAN_D = nn.Sequential()
+	   mGAN_D:add(layer1):add(layer2):add(layer3)
+	   local output_mGAN = mGAN_D:forward(output)
+	   errD_real = criterion:forward(output_mGAN, label)
+           local df_do = criterion:backward(output_mGAN, label) -- 1x1x30x30  
+           local df_dg = mGAN_D:updateGradInput(output, df_do)
+           netD:backward(real_AB, df_dg)
+        else
+           errD_real = criterion:forward(output, label)
+           local df_do = criterion:backward(output, label) -- 1x1x30x30  
+           netD:backward(real_AB, df_do)
+	end
     else
-        label = torch.FloatTensor(output:size()):fill(real_label)
-        if opt.gpu>0 then 
-    	   label = label:cuda()
-        end
-        errD_real = criterion:forward(output, label)
-        local df_do = criterion:backward(output, label)
-        netD:backward(real_AB, df_do)
+	m = real_C:float():resize(real_C:size(3), real_C:size(4))
+    	m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+    	m[m:gt(0)] = 1
+    	m:resize(1, 1, m:size(1), m:size(2))
+	local layer1 = nn.CMul(output:size())
+	layer1.weight = m:clone():mul(-1):add(1)
+	local layer2 = nn.CAdd(output:size())
+	layer2.bias = m:clone()
+	if opt.gpu > 0 then
+	   layer1 = layer1:cuda()
+	   layer2 = layer2:cuda()
+	end
+	local netReal = nn.Sequential()
+	netReal:add(layer1):add(layer2)
+	local outputReal = netReal:forward(output)
+        errD_real = criterion:forward(outputReal, label)
+        local df_do = criterion:backward(outputReal, label)
+	local df_dg = netReal:updateGradInput(output, df_do)
+        netD:backward(real_AB, df_dg)
     end
     
     -- Fake
     local output = netD:forward(fake_AB) -- Subir el valor de la zona de la mascara
+    label:fill(fake_label)
 
     if synth_label == 1 then
-        if opt.maskD == 1 then
-           aux_C = dyn_mask:float()
-    	   aux_C:resize(aux_C:size(3), aux_C:size(4))
-    	   aux_C = image.scale(aux_C, output:size(3), output:size(4)) -- min=-1 y max=1
-    	   mask_C = torch.Tensor(aux_C:size(1),aux_C:size(2)):zero():add(1)
-    	   mask_C[aux_C:gt(-1)] = opt.gamma -- Parametros que tocar!!
-    	   mask_C:resize(1, 1, mask_C:size(1), mask_C:size(1))
-    	   if opt.gpu > 0 then    
-	      mask_C = mask_C:cuda()
-    	   end
-    	   output = torch.cmul(output,mask_C)
-    	   output[output:gt(1)] = 1
-        end
-        label:fill(fake_label)
-        errD_fake = criterion:forward(output, label)
-        df_do = criterion:backward(output, label)
-        netD:backward(fake_AB, df_do)
+	if mGAN == 1 then
+    	   m = real_C:float():resize(real_C:size(3), real_C:size(4))
+    	   m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+    	   m[m:gt(0)] = 1
+    	   m:resize(1, 1, m:size(1), m:size(2))
+	   local layer1 = nn.CMul(output:size())
+	   local term_layer1 = m:clone():mul(opt.gamma-1):add(1)
+	   layer1.weight = term_layer1
+	   local layer2 = nn.Clamp(0, 1)
+	   if opt.gpu > 0 then
+		layer1 = layer1:cuda()
+		layer2 = layer2:cuda()
+	   end
+	   mGAN_D = nn.Sequential()
+	   mGAN_D:add(layer1):add(layer2)
+	   local output_mGAN = mGAN_D:forward(output)
+	   errD_fake = criterion:forward(output_mGAN, label)
+           local df_do = criterion:backward(output_mGAN, label)
+	   local df_dg = mGAN_D:updateGradInput(output, df_do)
+           netD:backward(fake_AB, df_dg)
+        else
+           errD_fake = criterion:forward(output, label)
+           local df_do = criterion:backward(output, label)
+           netD:backward(fake_AB, df_do)
+	end
     else
-	label:fill(fake_label)
-        errD_fake = criterion:forward(output, label)
-        df_do = criterion:backward(output, label)
-        netD:backward(fake_AB, df_do)
+        m = real_C:float():resize(real_C:size(3), real_C:size(4))
+    	m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+    	m[m:gt(0)] = 1
+    	m:resize(1, 1, m:size(1), m:size(2))
+	local layer1 = nn.CMul(output:size())
+	layer1.weight = m:clone():mul(-1):add(1)
+	if opt.gpu > 0 then
+	   layer1 = layer1:cuda()
+	end
+	netReal = nn.Sequential()
+	netReal:add(layer1)
+	local outputReal = netReal:forward(output)
+        errD_fake = criterion:forward(outputReal, label)
+        local df_do = criterion:backward(outputReal, label)
+	local df_dg = netReal:updateGradInput(output, df_do)
+        netD:backward(real_AB, df_dg)
     end
 
     errD = (errD_real + errD_fake)/2
-    
+
     return errD, gradParametersD
 end
 
@@ -523,116 +527,80 @@ local fGx = function(x)
     
     if synth_label == 1 then
 	if opt.use_GAN==1 then
-	   local output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-	   if maskD == 1 then
-	      mask_C = dyn_mask:float()
-    	      mask_C:resize(mask_C:size(3), mask_C:size(4))
-    	      mask_C = image.scale(mask_C, output:size(3), output:size(4)) -- min=-1 y max=1
-    	      mask_C = mask_C:add(1):mul(0.5)
-    	      mask_C[mask_C:gt(0)] = 1
-    	      mask_C:resize(1, 1, mask_C:size(1), mask_C:size(1))
-    	      if opt.gpu > 0 then    
-	      	mask_C = mask_C:cuda()
-    	      end
-	      output[mask_C:eq(1)] = output[mask_C:eq(1)]:mul(-1):add(1):mul(-opt.gamma):add(1)
-	      output[output:lt(0)] = 0
-	   end
+	   output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
 	   local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
 	   if opt.gpu>0 then 
 	     label = label:cuda();
 	   end
-	   errG = criterion:forward(output, label)
-	   local df_do = criterion:backward(output, label)
-	   df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+	   if mGAN == 1 then
+		output_mGAN = mGAN_D.output
+		errG = criterion:forward(output_mGAN, label)
+		local df_do = criterion:backward(output_mGAN, label)
+		local df_dx = mGAN_D:updateGradInput(output, df_do)
+		df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+	   else
+		errG = criterion:forward(output, label)
+	        local df_do = criterion:backward(output, label)
+	        df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_nc+1, output_nc)
+	   end	   
 	else
 	   errG = 0
 	end
     else
 	if opt.use_GAN==1 then
-	   local output = netD.output -- netD:forward{input_A,input_B} was already executed in fDx, so save computation
-	   local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+	   output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
+           local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
 	   if opt.gpu>0 then 
 	     label = label:cuda();
 	   end
-	   errG = criterion:forward(output, label)
-	   local df_do = criterion:backward(output, label)
-	   df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+	   local outputReal = netReal.output
+	   errG = criterion:forward(outputReal, label)
+	   local df_do = criterion:backward(outputReal, label)
+	   local df_dx = netReal:updateGradInput(output, df_do)
+	   df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
 	else
 	   errG = 0
 	end
     end
     
     -- unary loss
-    local df_do_AE = torch.zeros(fake_B:size())
+    local df_dg_AE = torch.zeros(fake_B:size())
     if opt.gpu>0 then 
-    	df_do_AE = df_do_AE:cuda();
+    	df_dg_AE = df_dg_AE:cuda();
     end
 
     if synth_label == 1 then
        if opt.use_L1==1 then
-          errL1 = criterionAE:forward(fake_B, real_gray_B)
-          df_do_AE = criterionAE:backward(fake_B, real_gray_B)
+          errL1 = criterionAE:forward(fake_B, realGray_B)
+          df_dg_AE = criterionAE:backward(fake_B, realGray_B)
        else
           errL1 = 0
        end
     else   
        if opt.use_L1==1 then
-          mask_C = dyn_mask:float()
-    	  if opt.gpu > 0 then    
-	     mask_C = mask_C:cuda()
-    	  end	
-          errL1 = criterionAE:forward(fake_B, real_gray_B)
-          df_do_AE = criterionAE:backward(fake_B, real_gray_B)
+	  local m = real_C:clone():float()
+	  local layer1 = nn.CMul(m:size())
+	  layer1.weight = m:clone():mul(-1):add(1)
+	  local layer2 = nn.CAdd(m:size())
+	  layer2.bias = realGray_A:clone():float():cmul(m)
+	  if opt.gpu > 0 then
+	     layer1 = layer1:cuda()
+	     layer2 = layer2:cuda()
+	  end
+	  local netReal = nn.Sequential()
+	  netReal:add(layer1):add(layer2)
+	  local fake_B2 = netReal:forward(fake_B)
+	  errL1 = criterionAE:forward(fake_B2, realGray_B)
+          local df_do_AE = criterionAE:backward(fake_B2, realGray_B)
+	  df_dg_AE = netReal:updateGradInput(fake_B, df_do_AE)
        else
           errL1 = 0
        end
     end
    
-    netG:backward(real_gray_A, df_dg + df_do_AE:mul(opt.lambda))   
+    netG:backward(real_A, df_dg + df_dg_AE:mul(opt.lambda))   
 
     return errG, gradParametersG
-end
-
-
-local fDynSSx = function(x)
-
-    gradParametersDynSS:zero()
-
-    local df_dg = torch.zeros(fake_B:size())
-    if opt.gpu>0 then 
-    	df_dg = df_dg:cuda();
-    end
-    local df_ddyn = torch.zeros(dyn_mask:size())
-    if opt.gpu>0 then 
-    	df_ddyn = df_ddyn:cuda();
-    end
-
-    local output = netD.output
-    if maskD == 1 then
-	mask_C = dyn_mask:float()
-    	mask_C:resize(mask_C:size(3), mask_C:size(4))
-    	mask_C = image.scale(mask_C, output:size(3), output:size(4)) -- min=-1 y max=1
-    	mask_C = mask_C:add(1):mul(0.5)
-    	mask_C[mask_C:gt(0)] = 1
-    	mask_C:resize(1, 1, mask_C:size(1), mask_C:size(1))
-    	if opt.gpu > 0 then    
-	   mask_C = mask_C:cuda()
-    	end
-	output[mask_C:eq(1)] = output[mask_C:eq(1)]:mul(-1):add(1):mul(-opt.gamma):add(1)
-	output[output:lt(0)] = 0
-    end
-    local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-    if opt.gpu>0 then 
-	label = label:cuda();
-    end
-    errDynSS = criterion:forward(output, label)
-    local df_do = criterion:backward(output, label)
-    df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
-    df_ddyn = netG:updateGradInput(dyn_mask, df_dg):narrow(2,dyn_mask:size(2)-output_gan_nc+1, output_gan_nc)
-
-    netDynSS:backward(fake_C, df_ddyn)
-
-    return errDynSS, gradParametersDynSS
 end
 
 local fSSx = function(x)
@@ -651,34 +619,23 @@ local fSSx = function(x)
     if opt.gpu>0 then 
     	df_derf = df_derf:cuda();
     end
-    local df_dy = torch.zeros(real_color_A:size())
+    local df_dy = torch.zeros(realRGB_A:size())
     if opt.gpu>0 then 
     	df_dy = df_dy:cuda();
     end
 
 --------------------------------------------------------------------------------
 
-    local output = netD.output
-    if maskD == 1 then
-	mask_C = dyn_mask:float()
-    	mask_C:resize(mask_C:size(3), mask_C:size(4))
-    	mask_C = image.scale(mask_C, output:size(3), output:size(4)) -- min=-1 y max=1
-    	mask_C = mask_C:add(1):mul(0.5)
-    	mask_C[mask_C:gt(0)] = 1
-    	mask_C:resize(1, 1, mask_C:size(1), mask_C:size(1))
-    	if opt.gpu > 0 then    
-	   mask_C = mask_C:cuda()
-    	end
-	output[mask_C:eq(1)] = output[mask_C:eq(1)]:mul(-1):add(1):mul(-opt.gamma):add(1)
-	output[output:lt(0)] = 0
-    end
-    local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+    local output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
+    local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for SS cost
     if opt.gpu>0 then 
 	label = label:cuda();
     end
-    errSS = criterion:forward(output, label)
-    local df_do = criterion:backward(output, label)
-    df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+    local outputReal = netReal.output
+    errSS = criterion:forward(outputReal, label)
+    local df_do = criterion:backward(outputReal, label)
+    local df_dx = netReal:updateGradInput(output, df_do)
+    df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
     df_ddyn = netG:updateGradInput(dyn_mask, df_dg):narrow(2,dyn_mask:size(2)-output_gan_nc+1, output_gan_nc)
     df_derf = netDynSS:updateGradInput(fake_C, df_ddyn)
 
@@ -688,15 +645,12 @@ local fSSx = function(x)
     errERFNet = criterionSS:forward(fake_C, real_C[1])
     df_dy = criterionSS:backward(fake_C, real_C[1])
 
-    local input = real_color_A:clone()
-    input = input:add(1):mul(0.5)
-    input[1][1] = real_color_A[1][3]:add(1):mul(0.5)
-    input[1][3] = real_color_A[1][1]:add(1):mul(0.5)
-
-    netSS:backward(input, df_dy + df_derf)
+    netSS:backward(realBGR_A, df_derf + df_dy:mul(opt.lambdaSS))
 
     return errSS, gradParametersSS
 end
+
+
 
 -- train
 local best_err = nil
@@ -740,8 +694,10 @@ for epoch = 1, opt.niter do
     epoch_tm:reset()
     for i = 1, math.min(data:size(), opt.ntrain), opt.batchSize do
         tm:reset()
+        
+        -- load a batch and run G on that batch
 
-	if opt.add_non_synthetic_data == 1 and epoch > opt.epoch_synth then
+	if opt.add_real_data == 1 and epoch > opt.epoch_synth then
 	   if torch.uniform() > opt.pNonSynth then
 	      synth_label = 1
 	   else
@@ -749,7 +705,6 @@ for epoch = 1, opt.niter do
 	   end
 	end
 
-	-- load a batch and run G on that batch
         createRealFake()
 
         -- (1) Update D network: maximize log(D(x,y)) + log(1 - D(x,G(x)))
@@ -758,71 +713,63 @@ for epoch = 1, opt.niter do
         -- (2) Update G network: maximize log(D(x,G(x))) + L1(y,G(x))
         optim.adam(fGx, parametersG, optimStateG)
 
-	-- (3) Update DynSS network:
-	-- optim.adam(fDynSSx, parametersDynSS, optimStateDynSS)
+	-- (3) Update SS network:
+	if synth_label == 0 then optim.adam(fSSx, parametersSS, optimStateSS) end
 
-	-- (4) Update SS network:
-	optim.adam(fSSx, parametersSS, optimStateSS)
-	
         -- display
         counter = counter + 1
         if counter % opt.display_freq == 0 and opt.display then
+
             createRealFake()
 
-            if opt.preprocess == 'colorization' then 
-                local real_A_s = util.scaleBatch(real_A:float(),100,100)
-                local fake_B_s = util.scaleBatch(fake_B:float(),100,100)
-                local real_B_s = util.scaleBatch(real_B:float(),100,100)
-                disp.image(util.deprocessL_batch(real_A_s), {win=opt.display_id, title=opt.name .. ' input'})
-                disp.image(util.deprocessLAB_batch(real_A_s, fake_B_s), {win=opt.display_id+1, title=opt.name .. ' output'})
-                disp.image(util.deprocessLAB_batch(real_A_s, real_B_s), {win=opt.display_id+2, title=opt.name .. ' target'})
-            else
-		if input_gan_nc == 3 and input_mask_nc == 0 then
-			disp.image(util.deprocess_batch(util.scaleBatch(real_A:float(),100,100)), {win=opt.display_id, title=opt.name .. ' input'})
-			disp.image(util.deprocess_batch(util.scaleBatch(fake_B:float(),100,100)), {win=opt.display_id+1, title=opt.name .. ' output'})
-			disp.image(util.deprocess_batch(util.scaleBatch(real_B:float(),100,100)), {win=opt.display_id+2, title=opt.name .. ' target'})
-		end
-		if input_gan_nc == 1 and input_mask_nc == 0 then
-			local img_input = util.scaleBatch(real_A:float(),100,100)
-			img_input = img_input:add(1):div(2)
-			disp.image(img_input, {win=opt.display_id, title=opt.name .. ' input'})
-			local img_output = util.scaleBatch(fake_B:float(),100,100)
-			img_output = img_output:add(1):div(2)
-			disp.image(img_output, {win=opt.display_id+1, title=opt.name .. ' output'})
-			local img_target = util.scaleBatch(real_B:float(),100,100)
-			img_target = img_target:add(1):div(2)
-			disp.image(img_target, {win=opt.display_id+2, title=opt.name .. ' target'})
-		end
-		if input_mask_nc == 1 and input_gan_nc == 3 then
-			disp.image(util.deprocess_batch(util.scaleBatch(real_gray_A:float(),100,100)), {win=opt.display_id, title=opt.name .. ' input'})
-			local mask_input = util.scaleBatch(real_C:float(),100,100)
-			mask_input = mask_input:add(1):div(2)
-			disp.image(mask_input, {win=opt.display_id+1, title=opt.name .. ' input_MASK'})
-			disp.image(util.deprocess_batch(util.scaleBatch(fake_B:float(),100,100)), {win=opt.display_id+2, title=opt.name .. ' output'})
-			disp.image(util.deprocess_batch(util.scaleBatch(real_gray_B:float(),100,100)), {win=opt.display_id+3, title=opt.name .. ' target'})
-		end
-		if input_mask_nc == 1 and input_gan_nc == 1 then
-			local img_input = util.scaleBatch(real_gray_A:float(),100,100)
-			img_input = img_input:add(1):div(2)
-			disp.image(img_input, {win=opt.display_id, title=opt.name .. ' input'})
-			local dyn_mask_input = util.scaleBatch(dyn_mask:float(),100,100)
-			dyn_mask_input = dyn_mask_input:add(1):div(2)
-			disp.image(dyn_mask_input, {win=opt.display_id+1, title=opt.name .. ' DynMask'})
-			local img_output = util.scaleBatch(fake_B:float(),100,100)
-			img_output = img_output:add(1):div(2)
-			disp.image(img_output, {win=opt.display_id+2, title=opt.name .. ' output'})
-			local img_target = util.scaleBatch(real_gray_B:float(),100,100)
-			img_target = img_target:add(1):div(2)
-			disp.image(img_target, {win=opt.display_id+3, title=opt.name .. ' target'})
-			local mask_input = util.scaleBatch(winner:float(),100,100)
-			mask_input = mask_input:add(1):div(2)
-			disp.image(mask_input, {win=opt.display_id+4, title=opt.name .. ' Mask'})
-		end
+	    if input_nc == 3 and input_mask_nc == 0 then
+		disp.image(util.deprocess_batch(util.scaleBatch(real_A:float(),100,100)), {win=opt.display_id, title=opt.name .. ' input'})
+		disp.image(util.deprocess_batch(util.scaleBatch(fake_B:float(),100,100)), {win=opt.display_id+1, title=opt.name .. ' output'})
+		disp.image(util.deprocess_batch(util.scaleBatch(real_B:float(),100,100)), {win=opt.display_id+2, title=opt.name .. ' target'})
+	    end
+	    if input_gan_nc == 1 and input_mask_nc == 0 then
+		local img_input = util.scaleBatch(realGray_A:float(),100,100)
+		img_input = img_input:add(1):div(2)
+		disp.image(img_input, {win=opt.display_id, title=opt.name .. ' input'})
+		local img_output = util.scaleBatch(fake_B:float(),100,100)
+		img_output = img_output:add(1):div(2)
+		disp.image(img_output, {win=opt.display_id+1, title=opt.name .. ' output'})
+		local img_target = util.scaleBatch(realGray_B:float(),100,100)
+		img_target = img_target:add(1):div(2)
+		disp.image(img_target, {win=opt.display_id+2, title=opt.name .. ' target'})
+	    end
+	    if input_mask_nc == 1 and input_gan_nc == 3 then
+		disp.image(util.deprocess_batch(util.scaleBatch(realRGB_A:float(),100,100)), {win=opt.display_id, title=opt.name .. ' input'})
+		local mask_input = util.scaleBatch(real_C:float(),100,100)
+		mask_input = mask_input:add(1):div(2)
+		disp.image(mask_input, {win=opt.display_id+1, title=opt.name .. ' input_MASK'})
+		disp.image(util.deprocess_batch(util.scaleBatch(fake_B:float(),100,100)), {win=opt.display_id+2, title=opt.name .. ' output'})
+		disp.image(util.deprocess_batch(util.scaleBatch(realRGB_B:float(),100,100)), {win=opt.display_id+3, title=opt.name .. ' target'})
+	    end
+	    if input_mask_nc == 1 and input_gan_nc == 1 then
+		local img_input = util.scaleBatch(realGray_A:float(),100,100)
+		img_input = img_input:add(1):div(2)
+		disp.image(img_input, {win=opt.display_id, title=opt.name .. ' input'})
+		local mask_input = util.scaleBatch(real_C:float(),100,100)
+		mask_input = mask_input:add(1):div(2)
+		disp.image(mask_input, {win=opt.display_id+1, title=opt.name .. ' target_MASK'})
+		local img_output = util.scaleBatch(fake_B:float(),100,100)
+		img_output = img_output:add(1):div(2)
+		disp.image(img_output, {win=opt.display_id+2, title=opt.name .. ' output'})
+		local img_target = util.scaleBatch(realGray_B:float(),100,100)
+		img_target = img_target:add(1):div(2)
+		disp.image(img_target, {win=opt.display_id+3, title=opt.name .. ' target'})
+		local dyn_mask_output = util.scaleBatch(dyn_mask:float(),100,100)
+		dyn_mask_output = dyn_mask_output:add(1):div(2)
+		disp.image(dyn_mask_output, {win=opt.display_id+4, title=opt.name .. ' DynMASK'})
+		local mask_output = util.scaleBatch(winner:float(),100,100)
+		mask_output = mask_output:add(1):div(2)
+		disp.image(mask_output, {win=opt.display_id+5, title=opt.name .. ' output_MASK'})
             end
         end
       
         -- write display visualization to disk
-        -- runs on the first batchSize images in the opt.phase set
+        --  runs on the first batchSize images in the opt.phase set
         if counter % opt.save_display_freq == 0 and opt.display then
             local serial_batches=opt.serial_batches
             opt.serial_batches=1
@@ -835,38 +782,32 @@ for epoch = 1, opt.niter do
             
                 createRealFake()
                 print('save to the disk')
-                if opt.preprocess == 'colorization' then 
-                    for i2=1, fake_B:size(1) do
-                        if image_out==nil then image_out = torch.cat(util.deprocessL(real_A[i2]:float()),util.deprocessLAB(real_A[i2]:float(), fake_B[i2]:float()),3)/255.0
-                        else image_out = torch.cat(image_out, torch.cat(util.deprocessL(real_A[i2]:float()),util.deprocessLAB(real_A[i2]:float(), fake_B[i2]:float()),3)/255.0, 2) end
-                    end
-                else
-                    for i2=1, fake_B:size(1) do
-                        if image_out==nil then 
-				if input_gan_nc == 3 then
-					image_out = torch.cat(util.deprocess(real_A[i2]:float()),util.deprocess(fake_B[i2]:float()),3)
-				end
-				if input_gan_nc == 1 then
-					local aux_A = real_gray_A[i2]:float()
-					aux_A = aux_A:add(1):div(2)
-					local aux_B = fake_B[i2]:float()
-					aux_B = aux_B:add(1):div(2)
-					image_out = torch.cat(aux_A,aux_B,3)
-				end
-                        else
-				if input_gan_nc == 3 then
-					image_out = torch.cat(image_out, torch.cat(util.deprocess(real_A[i2]:float()),util.deprocess(fake_B[i2]:float()),3), 2) 
-				end
-				if input_gan_nc == 1 then
-					local aux_A = real_gray_A[i2]:float()
-					aux_A = aux_A:add(1):div(2)
-					local aux_B = fake_B[i2]:float()
-					aux_B = aux_B:add(1):div(2)
-					image_out = torch.cat(image_out, torch.cat(aux_A,aux_B,3), 2) 
-				end
+
+                for i2=1, fake_B:size(1) do
+                    if image_out==nil then 
+			if input_nc == 3 then
+			    image_out = torch.cat(util.deprocess(real_A[i2]:float()),util.deprocess(fake_B[i2]:float()),3)
+			end
+			if input_nc == 1 then
+			    local aux_A = real_A[i2]:float()
+			    aux_A = aux_A:add(1):div(2)
+			    local aux_B = fake_B[i2]:float()
+			    aux_B = aux_B:add(1):div(2)
+			    image_out = torch.cat(aux_A,aux_B,3)
+			end
+                    else
+			if input_nc == 3 then
+			    image_out = torch.cat(image_out, torch.cat(util.deprocess(real_A[i2]:float()),util.deprocess(fake_B[i2]:float()),3), 2) 
+			end
+			if input_nc == 1 then
+			    local aux_A = real_A[i2]:float()
+			    aux_A = aux_A:add(1):div(2)
+			    local aux_B = fake_B[i2]:float()
+			    aux_B = aux_B:add(1):div(2)
+			    image_out = torch.cat(image_out, torch.cat(aux_A,aux_B,3), 2) 
 			end
                     end
-                end
+		end
             end
             image.save(paths.concat(opt.checkpoints_dir,  opt.name , counter .. '_train_res.png'), image_out)
             
@@ -875,45 +816,45 @@ for epoch = 1, opt.niter do
         
 	if (counter % opt.val_freq == 0 or counter == 1) and opt.display then
 	    createRealFake()
-	    val_fake_B = netG:forward(torch.cat(val_real_gray_A,val_real_C,2))
-	    val_errL1 = criterionAE:forward(val_fake_B, val_real_gray_B)
+	    val_fake_B = netG:forward(torch.cat(val_realGray_A,val_real_C,2))
+	    val_errL1 = criterionAE:forward(val_fake_B, val_realGray_B)
 	    if input_gan_nc == 3 and input_mask_nc == 0 then
-		disp.image(util.deprocess_batch(util.scaleBatch(val_real_A:float(),100,100)), {win=opt.display_id+3, title=opt.name .. ' val_input'})
+		disp.image(util.deprocess_batch(util.scaleBatch(val_realRGB_A:float(),100,100)), {win=opt.display_id+3, title=opt.name .. ' val_input'})
 		disp.image(util.deprocess_batch(util.scaleBatch(val_fake_B:float(),100,100)), {win=opt.display_id+4, title=opt.name .. ' val_output'})
-		disp.image(util.deprocess_batch(util.scaleBatch(val_real_B:float(),100,100)), {win=opt.display_id+5, title=opt.name .. ' val_target'})
+		disp.image(util.deprocess_batch(util.scaleBatch(val_realRGB_B:float(),100,100)), {win=opt.display_id+5, title=opt.name .. ' val_target'})
 	    end
 	    if input_gan_nc == 1 and input_mask_nc == 0 then
-		local img_input = util.scaleBatch(val_real_A:float(),100,100)
+		local img_input = util.scaleBatch(val_realGray_A:float(),100,100)
 		img_input = img_input:add(1):div(2)
 		disp.image(img_input, {win=opt.display_id+3, title=opt.name .. ' val_input'})
 		local img_output = util.scaleBatch(val_fake_B:float(),100,100)
 		img_output = img_output:add(1):div(2)
 		disp.image(img_output, {win=opt.display_id+4, title=opt.name .. ' val_output'})
-		local img_target = util.scaleBatch(val_real_B:float(),100,100)
+		local img_target = util.scaleBatch(val_realGray_B:float(),100,100)
 		img_target = img_target:add(1):div(2)
 		disp.image(img_target, {win=opt.display_id+5, title=opt.name .. ' val_target'})
 	    end
 	    if input_mask_nc == 1 and input_gan_nc == 3 then
-		disp.image(util.deprocess_batch(util.scaleBatch(val_real_gray_A:float(),100,100)), {win=opt.display_id+4, title=opt.name .. ' val_input'})
+		disp.image(util.deprocess_batch(util.scaleBatch(val_realRGB_A:float(),100,100)), {win=opt.display_id+4, title=opt.name .. ' val_input'})
 		local mask_input = util.scaleBatch(val_real_C:float(),100,100)
 		mask_input = mask_input:add(1):div(2)
 		disp.image(mask_input, {win=opt.display_id+5, title=opt.name .. ' val_input_MASK'})
 		disp.image(util.deprocess_batch(util.scaleBatch(val_fake_B:float(),100,100)), {win=opt.display_id+6, title=opt.name .. ' val_output'})
-		disp.image(util.deprocess_batch(util.scaleBatch(val_real_gray_B:float(),100,100)), {win=opt.display_id+7, title=opt.name .. ' val_target'})
+		disp.image(util.deprocess_batch(util.scaleBatch(val_realRGB_B:float(),100,100)), {win=opt.display_id+7, title=opt.name .. ' val_target'})
 	    end
 	    if input_mask_nc == 1 and input_gan_nc == 1 then
-		local img_input = util.scaleBatch(val_real_gray_A:float(),100,100)
+		local img_input = util.scaleBatch(val_realGray_A:float(),100,100)
 		img_input = img_input:add(1):div(2)
-		disp.image(img_input, {win=opt.display_id+5, title=opt.name .. ' val_input'})
+		disp.image(img_input, {win=opt.display_id+6, title=opt.name .. ' val_input'})
 		local mask_input = util.scaleBatch(val_real_C:float(),100,100)
 		mask_input = mask_input:add(1):div(2)
-		disp.image(mask_input, {win=opt.display_id+6, title=opt.name .. ' val_input_MASK'})
+		disp.image(mask_input, {win=opt.display_id+7, title=opt.name .. ' val_input_MASK'})
 		local img_output = util.scaleBatch(val_fake_B:float(),100,100)
 		img_output = img_output:add(1):div(2)
-		disp.image(img_output, {win=opt.display_id+7, title=opt.name .. ' val_output'})
-		local img_target = util.scaleBatch(val_real_gray_B:float(),100,100)
+		disp.image(img_output, {win=opt.display_id+8, title=opt.name .. ' val_output'})
+		local img_target = util.scaleBatch(val_realGray_B:float(),100,100)
 		img_target = img_target:add(1):div(2)
-		disp.image(img_target, {win=opt.display_id+8, title=opt.name .. ' val_target'})
+		disp.image(img_target, {win=opt.display_id+9, title=opt.name .. ' val_target'})
 	    end
 
 
@@ -958,8 +899,7 @@ for epoch = 1, opt.niter do
             print(('saving the latest model (epoch %d, iters %d)'):format(epoch, counter))
             torch.save(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_G.t7'), netG:clearState())
             torch.save(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_D.t7'), netD:clearState())
-	    torch.save(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_SS.t7'), netSS:clearState())
-	    torch.save(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_DynSS.t7'), netDynSS:clearState())
+	    torch.save(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_SS.t7'), netD:clearState())
         end
         
     end
@@ -967,13 +907,11 @@ for epoch = 1, opt.niter do
     parametersD, gradParametersD = nil, nil -- nil them to avoid spiking memory
     parametersG, gradParametersG = nil, nil
     parametersSS, gradParametersSS = nil, nil
-    parametersDynSS, gradParametersDynSS = nil, nil
 
     if epoch % opt.save_epoch_freq == 0 then
         torch.save(paths.concat(opt.checkpoints_dir, opt.name,  epoch .. '_net_G.t7'), netG:clearState())
         torch.save(paths.concat(opt.checkpoints_dir, opt.name, epoch .. '_net_D.t7'), netD:clearState())
-	torch.save(paths.concat(opt.checkpoints_dir, opt.name, epoch .. '_net_SS.t7'), netSS:clearState())
-	torch.save(paths.concat(opt.checkpoints_dir, opt.name, epoch .. '_net_DynSS.t7'), netDynSS:clearState())
+	torch.save(paths.concat(opt.checkpoints_dir, opt.name, epoch .. '_net_SS.t7'), netD:clearState())
     end
     
     print(('End of epoch %d / %d \t Time Taken: %.3f'):format(
@@ -981,5 +919,4 @@ for epoch = 1, opt.niter do
     parametersD, gradParametersD = netD:getParameters() -- reflatten the params and get them
     parametersG, gradParametersG = netG:getParameters()
     parametersSS, gradParametersSS = netSS:getParameters()
-    parametersDynSS, gradParametersDynSS = netDynSS:getParameters()
 end
