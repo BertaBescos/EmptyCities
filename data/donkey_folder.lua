@@ -20,6 +20,8 @@ paths.dofile('dataset.lua')
 print(os.getenv('DATA_ROOT'))
 opt.data = paths.concat(os.getenv('DATA_ROOT'), opt.phase)
 print(opt.data)
+paths.dofile('data_aug.lua')
+-- This file contains the data augmentation techniques.
 
 if not paths.dirp(opt.data) then
     error('Did not find directory: ' .. opt.data)
@@ -38,6 +40,11 @@ local loadSize   = {input_nc, opt.loadSize}
 local sampleSize = {input_nc, opt.fineSize}
 
 local preprocessAandB = function(imA, imB)
+
+  if opt.data_aug == 1 then
+      imA,imB,imB = data_aug.apply(imA,imB,imB)
+  end
+
   imA = image.scale(imA, loadSize[2], loadSize[2])
   imB = image.scale(imB, loadSize[2], loadSize[2])
 
@@ -55,7 +62,6 @@ local preprocessAandB = function(imA, imB)
   assert(imB:max()<=1,"B: badly scaled inputs")
   assert(imB:min()>=-1,"B: badly scaled inputs")
  
-  
   local oW = sampleSize[2]
   local oH = sampleSize[2]
 
@@ -72,11 +78,6 @@ local preprocessAandB = function(imA, imB)
   if iH ~= oH or iW ~= oW then 
     imA = image.crop(imA, w1, h1, w1 + oW, h1 + oH)
     imB = image.crop(imB, w1, h1, w1 + oW, h1 + oH)
-  end
-  
-  if opt.flip == 1 and torch.uniform() > 0.5 then 
-    imA = image.hflip(imA)
-    imB = image.hflip(imB)
   end
   
   return imA, imB
