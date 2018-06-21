@@ -24,9 +24,9 @@ opt = {
     preprocess = 'regular',   -- for special purpose preprocessing, e.g., for colorization, change this (selects preprocessing functions in util.lua)
     aspect_ratio = 1.0,       -- aspect ratio of result images
     name = '',                -- name of experiment, selects which model to run, should generally should be passed on command line
-    input_nc = 1,             -- #  of input image channels
-    output_nc = 1,            -- #  of output image channels
-    input_mask_nc = 1,	      -- #  of input mask channels --bbescos
+    input_nc = 3,             -- #  of input image channels
+    output_nc = 3,            -- #  of output image channels
+    input_mask_nc = 0,	      -- #  of input mask channels --bbescos
     serial_batches = 1,       -- if 1, takes images in order to make batches, otherwise takes them randomly
     serial_batch_iter = 1,    -- iter into serial image list
     cudnn = 1,                -- set to 0 to not use cudnn (untested)
@@ -34,7 +34,6 @@ opt = {
     results_dir='./results/',          -- saves results here
     which_epoch = 'latest',            -- which epoch to test? set to 'latest' to use latest cached model
 }
-
 
 -- one-line argument parser. parses enviroment variables to override the defaults
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
@@ -49,43 +48,49 @@ torch.setdefaulttensortype('torch.FloatTensor')
 
 opt.netG_name = opt.name .. '/' .. opt.which_epoch .. '_net_G'
 
+function pause ()
+    print("Press any key to continue.")
+    io.flush()
+    io.read()
+end
+
 local input_mask_nc = opt.input_mask_nc
 
-if input_mask_nc == 0 then
-	data_loader = paths.dofile('data/data.lua')
-else
-	data_loader = paths.dofile('data/data2.lua') --bbescos
-end
+data_loader = paths.dofile('data/dataINF.lua')
 print('#threads...' .. opt.nThreads)
 local data = data_loader.new(opt.nThreads, opt)
 print("Dataset Size: ", data:size())
 
 -- translation direction
 local idx_A = nil
-local idx_B = nil
 local input_nc = opt.input_nc
 local output_nc = opt.output_nc
 
-if opt.which_direction=='AtoB' then
-  idx_A = {1, input_nc}
-  idx_B = {input_nc+1, input_nc+output_nc}
-elseif opt.which_direction=='BtoA' then
-  idx_A = {input_nc+1, input_nc+output_nc}
-  idx_B = {1, input_nc}
-else
-  error(string.format('bad direction %s',opt.which_direction))
-end
+idx_A = {1, input_nc}
+
 ----------------------------------------------------------------------------
 
 local input = torch.FloatTensor(opt.batchSize,3,opt.fineSize,opt.fineSize)
-local target = torch.FloatTensor(opt.batchSize,3,opt.fineSize,opt.fineSize)
 
 print('checkpoints_dir', opt.checkpoints_dir)
 local netG = util.load(paths.concat(opt.checkpoints_dir, opt.netG_name .. '.t7'), opt)
---netG:evaluate()
-
+netG:evaluate()
 print(netG)
-
+local SemSeg = '/home/bescosb/pix2pix_0.1/ss_models/erfnet_scratch.net'
+local netSS = torch.load(SemSeg)
+netSS:evaluate()
+print(netSS)
+local netDynSS = nn.Sequential()
+local convDyn = nn.SpatialFullConvolution(20,1,1,1,1,1)
+local w, dw = convDyn:parameters()
+w[1][{{1,12}}] = -8/20 -- Static
+w[1][{{13,20}}] = 12/20 -- Dynamic
+w[2]:fill(0)
+netDynSS:add(nn.SoftMax())
+netDynSS:add(convDyn):add(nn.MulConstant(100))
+netDynSS:add(nn.Tanh())
+netDynSS = netDynSS:cuda()
+print(netDynSS)
 
 function TableConcat(t1,t2)
     for i=1,#t2 do
@@ -107,88 +112,42 @@ for n=1,math.floor(opt.how_many/opt.batchSize) do
     filepaths_curr = util.basename_batch(filepaths_curr)
     print('filepaths_curr: ', filepaths_curr)
     
-    input = data_curr[{ {}, idx_A, {}, {} }]
-    target = data_curr[{ {}, idx_B, {}, {} }]
-
+    inputRGB = data_curr[{ {}, idx_A, {}, {} }]
     if opt.gpu > 0 then
-        input = input:cuda()
+        inputRGB = inputRGB:cuda()
     end
+    inputGray = image.rgb2y(inputRGB[1]:float())
+    inputGray = inputGray:cuda()
+    inputGray = inputGray:resize(1,inputGray:size(1),inputGray:size(2),inputGray:size(3))
 
-    if input_mask_nc == 1 then
-	idx_C = {input_nc + output_nc + 1,input_nc + output_nc + input_mask_nc}
-	aux = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize)
-	aux = aux:cuda()
-	aux:copy(data_curr[{ {}, idx_C, {}, {} }])
-	input = torch.cat(input,aux,2)
-    end
+    local inputBGR = inputRGB:clone()
+    inputBGR = inputBGR:add(1):mul(0.5)
+    inputBGR[1][1] = inputRGB[1][3]:add(1):mul(0.5)
+    inputBGR[1][3] = inputRGB[1][1]:add(1):mul(0.5)
 
-    if opt.preprocess == 'colorization' then
-       local output_AB = netG:forward(input):float()
-       local input_L = input:float() 
-       output = util.deprocessLAB_batch(input_L, output_AB)
-       local target_AB = target:float()
-       target = util.deprocessLAB_batch(input_L, target_AB)
-       input = util.deprocessL_batch(input_L)
-    else
-	if input_nc == 3 and input_mask_nc == 0 then  
-        	output = util.deprocess_batch(netG:forward(input))
-        	input = util.deprocess_batch(input):float()
-        	output = output:float()
-        	target = util.deprocess_batch(target):float()
-	end
-	if input_nc == 1 and input_mask_nc == 0 then
-		local _output = netG:forward(input)
-		output = _output:add(1):div(2)
-		output = output:float()
-		input = input:add(1):div(2):float()
-		target = target:add(1):div(2):float()
-	end
-	if input_nc == 3 and input_mask_nc == 1 then  
-        	output = util.deprocess_batch(netG:forward(input))
-		local _input = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-		_input = _input:cuda()
-		_input:copy(data_curr[{ {}, idx_A, {}, {} }])
-        	input = util.deprocess_batch(_input):float()
-        	output = output:float()
-        	target = util.deprocess_batch(target):float()
-	end
-	if input_nc == 1 and input_mask_nc == 1 then 
-		local _input = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
-		_input = _input:cuda()
-		_input:copy(data_curr[{ {}, idx_A, {}, {} }])
-		local _output = netG:forward(input)
-		input = _input:add(1):div(2):float()
-		output = _output:add(1):div(2)
-		output = output:float()
-		target = target:add(1):div(2):float()
-	end
-    end
+    mask = netSS:forward(inputBGR)
+    dyn_mask = netDynSS:forward(mask)
+    inputGAN = torch.cat(inputGray,dyn_mask,2)
+    output = netG:forward(inputGAN)
+
+    input = inputGray:float():add(1):div(2)
+    output = output:float():add(1):div(2)
+
     paths.mkdir(paths.concat(opt.results_dir, opt.netG_name .. '_' .. opt.phase))
     local image_dir = paths.concat(opt.results_dir, opt.netG_name .. '_' .. opt.phase, 'images')
     paths.mkdir(image_dir)
     paths.mkdir(paths.concat(image_dir,'input'))
     paths.mkdir(paths.concat(image_dir,'output'))
-    paths.mkdir(paths.concat(image_dir,'target'))
-    
+
     for i=1, opt.batchSize do
         image.save(paths.concat(image_dir,'input',filepaths_curr[i]), image.scale(input[i],input[i]:size(2),input[i]:size(3)/opt.aspect_ratio))
         image.save(paths.concat(image_dir,'output',filepaths_curr[i]), image.scale(output[i],output[i]:size(2),output[i]:size(3)/opt.aspect_ratio))
-        image.save(paths.concat(image_dir,'target',filepaths_curr[i]), image.scale(target[i],target[i]:size(2),target[i]:size(3)/opt.aspect_ratio))
     end
+
     print('Saved images to: ', image_dir)
-    
-    if opt.display then
-      if opt.preprocess == 'regular' then
-        disp = require 'display'
-        disp.image(util.scaleBatch(input,100,100),{win=opt.display_id, title='input'})
-        disp.image(util.scaleBatch(output,100,100),{win=opt.display_id+1, title='output'})
-        disp.image(util.scaleBatch(target,100,100),{win=opt.display_id+2, title='target'})
-        
-        print('Displayed images')
-      end
-    end
-    
+
     filepaths = TableConcat(filepaths, filepaths_curr)
+
 end
 
 -- make webpage
@@ -196,13 +155,12 @@ io.output(paths.concat(opt.results_dir,opt.netG_name .. '_' .. opt.phase, 'index
 
 io.write('<table style="text-align:center;">')
 
-io.write('<tr><td>Image #</td><td>Input</td><td>Output</td><td>Ground Truth</td></tr>')
+io.write('<tr><td>Image #</td><td>Input</td><td>Output</td></tr>')
 for i=1, #filepaths do
     io.write('<tr>')
     io.write('<td>' .. filepaths[i] .. '</td>')
     io.write('<td><img src="./images/input/' .. filepaths[i] .. '"/></td>')
     io.write('<td><img src="./images/output/' .. filepaths[i] .. '"/></td>')
-    io.write('<td><img src="./images/target/' .. filepaths[i] .. '"/></td>')
     io.write('</tr>')
 end
 
