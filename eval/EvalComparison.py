@@ -44,8 +44,7 @@ for name in file_names:
 	bin_mask[mask[:,:,0] == 255] = 1
 	bin_nomask[mask[:,:,0] == 255] = 0
 	nPixels = np.sum(bin_mask)
-	nNoPixels = np.sum(bin_nomask)
-	print(nPixels+nNoPixels,286*286)	
+	nNoPixels = np.sum(bin_nomask)	
 
 	if nPixels > 0:
 		L1 = cv2.norm(output,target,cv2.NORM_L1)

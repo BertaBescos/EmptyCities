@@ -51,6 +51,7 @@ opt = {
    display_freq = 100,          -- display the current results every display_freq iterations
    save_display_freq = 10000,    -- save the current display of results every save_display_freq_iterations
    continue_train=0,            -- if continue training, load the latest model: 1: true, 0: false
+   epoch_ini = 1,		-- if continue training, at what epoch we start
    serial_batches = 0,          -- if 1, takes images in order to make batches, otherwise takes them randomly
    serial_batch_iter = 1,       -- iter into serial image list
    checkpoints_dir = './checkpoints', -- models are saved here
@@ -179,20 +180,43 @@ function defineD(input_nc, output_nc, ndf)
 end
 
 -- load saved models and finetune
+local SemSeg = '/home/bescosb/pix2pix_0.1/ss_models/erfnet_scratch.net'
 if opt.continue_train == 1 then
    print('loading previously trained netG...')
    netG = util.load(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_G.t7'), opt)
    print('loading previously trained netD...')
    netD = util.load(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_D.t7'), opt)
+   if opt.epoch_ini > (opt.epoch_synth + 3) then
+      print('loading previously trained netSS...')
+      netSS = util.load(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_SS.t7'), opt)
+   else
+      print('define model netSS...')
+      netSS = torch.load(SemSeg)
+   end
 else
    print('define model netG...')
    netG = defineG(input_gan_nc + input_mask_nc, output_gan_nc, ngf)
    print('define model netD...')
    netD = defineD(input_gan_nc, output_gan_nc, ndf)
+   print('define model netSS...')
+   netSS = torch.load(SemSeg)
 end
 
+netSS:training()
 print(netG)
 print(netD)
+print(netSS)
+
+local netDynSS = nn.Sequential()
+local convDyn = nn.SpatialFullConvolution(20,1,1,1,1,1)
+local w, dw = convDyn:parameters()
+w[1][{{1,12}}] = -8/20 -- Static
+w[1][{{13,20}}] = 12/20 -- Dynamic
+w[2]:fill(0)
+netDynSS:add(nn.SoftMax())
+netDynSS:add(convDyn):add(nn.MulConstant(100))
+netDynSS:add(nn.Tanh())
+print('netDynSS: ', netDynSS)
 
 local criterion = nn.BCECriterion() --This is the Adversarial Criterion for the RGB image
 local criterionAE = nn.AbsCriterion() --This is the L1 Loss for the RGB image
@@ -249,25 +273,6 @@ local errD, errG, errL1 = 0, 0, 0
 local epoch_tm = torch.Timer()
 local tm = torch.Timer()
 local data_tm = torch.Timer()
-
-----------------------------------------------------------------------------
-
--- integrate semantic segmentation model
-local SemSeg = '/home/bescosb/pix2pix_0.1/ss_models/erfnet_scratch.net'
-local netSS = torch.load(SemSeg)
-netSS:training()
-local netDynSS = nn.Sequential()
-local convDyn = nn.SpatialFullConvolution(20,1,1,1,1,1)
-local w, dw = convDyn:parameters()
-w[1][{{1,12}}] = -8/20 -- Static
-w[1][{{13,20}}] = 12/20 -- Dynamic
-w[2]:fill(0)
-netDynSS:add(nn.SoftMax())
-netDynSS:add(convDyn):add(nn.MulConstant(100))
-netDynSS:add(nn.Tanh())
-
-print('netSS: ', netSS)
-print('netDynSS: ', netDynSS)
 
 ----------------------------------------------------------------------------
 

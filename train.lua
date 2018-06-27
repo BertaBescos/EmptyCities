@@ -48,6 +48,7 @@ opt = {
    display_freq = 100,          -- display the current results every display_freq iterations
    save_display_freq = 10000,    -- save the current display of results every save_display_freq_iterations
    continue_train=0,            -- if continue training, load the latest model: 1: true, 0: false
+   epoch_ini = 1,		-- if continue training, what epoch we start
    serial_batches = 0,          -- if 1, takes images in order to make batches, otherwise takes them randomly
    serial_batch_iter = 1,       -- iter into serial image list
    checkpoints_dir = './checkpoints', -- models are saved here
@@ -548,7 +549,7 @@ local plot_data = {}
 local plot_win
 
 local counter = 0
-for epoch = 1, opt.niter do
+for epoch = opt.epoch_ini, opt.niter do
     epoch_tm:reset()
     for i = 1, math.min(data:size(), opt.ntrain), opt.batchSize do
         tm:reset()

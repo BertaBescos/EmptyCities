@@ -125,10 +125,14 @@ for n=1,math.floor(opt.how_many/opt.batchSize) do
     inputBGR[1][1] = inputRGB[1][3]:add(1):mul(0.5)
     inputBGR[1][3] = inputRGB[1][1]:add(1):mul(0.5)
 
+    local data_tm = torch.Timer()
+    data_tm:reset(); data_tm:resume()
     mask = netSS:forward(inputBGR)
     dyn_mask = netDynSS:forward(mask)
     inputGAN = torch.cat(inputGray,dyn_mask,2)
     output = netG:forward(inputGAN)
+    data_tm:stop()
+    print(data_tm:time().real)
 
     input = inputGray:float():add(1):div(2)
     output = output:float():add(1):div(2)

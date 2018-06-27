@@ -1,43 +1,46 @@
 
 require 'image'
+require 'torch'
+
+print('Loading data augmentation paramaters...')
 
 local data_aug = {}
 
 function data_aug.apply(imA,imB,imC)
 
--- ROTATION
-if torch.uniform() > 0.5 then
-    data_aug.rotate(imA,imB,imC)
-end
-
 -- FLIP
 if torch.uniform() > 0.5 then
-    data_aug.flip(imA,imB,imC)
+    imA, imB, imC = data_aug.imflip(imA,imB,imC)
+end
+
+-- ROTATION
+if torch.uniform() > 0.5 then
+    imA, imB, imC = data_aug.rotate(imA,imB,imC)
 end
 
 -- GAUSSIAN BLUR
 if torch.uniform() > 0.5 then
-    data_aug.gaussian_blur(imA)
+    imA = data_aug.gaussian_blur(imA)
 end
 
 -- GAUSSIAN NOISE
 if torch.uniform() > 0.5 then
-    data_aug.gaussian_noise(imA)
+    imA = data_aug.gaussian_noise(imA)
 end
 
 -- CONTRAST VARIATION
 if torch.uniform() > 0.5 then
-    data_aug.contrast(imA)
+    imA = data_aug.contrast(imA)
 end
 
 -- BRIGHTNESS VARIATION
 if torch.uniform() > 0.5 then
-    data_aug.brightness(imA)
+    imA = data_aug.brightness(imA)
 end
 
 -- SATURATION
 if torch.uniform() > 0.5 then
-    data_aug.saturation(imA)
+    imA = data_aug.saturation(imA)
 end
 
 -- DROPOUT
@@ -81,7 +84,7 @@ function data_aug.rotate(imA,imB,imC)
     return imA, imB, imC
 end
 
-function data_aug.flip(imA,imB,imC)
+function data_aug.imflip(imA,imB,imC)
     imA = image.hflip(imA)
     imB = image.hflip(imB)
     imC = image.hflip(imC)
@@ -160,3 +163,5 @@ function data_aug.dropout(imA)
     imA[{{1},{h1,h1+height},{w1,w1+width}}] = 0
     return imA
 end
+
+return data_aug

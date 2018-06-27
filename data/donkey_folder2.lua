@@ -19,8 +19,14 @@ paths.dofile('dataset.lua')
 -- Check for existence of opt.data
 print(os.getenv('DATA_ROOT'))
 opt.data = paths.concat(os.getenv('DATA_ROOT'), opt.phase)
-paths.dofile('data_aug.lua')
+dataAug = paths.dofile('data_aug.lua')
 -- This file contains the data augmentation techniques.
+
+function pause ()
+    print("Press any key to continue.")
+    io.flush()
+    io.read()
+end
 
 if not paths.dirp(opt.data) then
     error('Did not find directory: ' .. opt.data)
@@ -42,7 +48,7 @@ local sampleSize = {input_nc, opt.fineSize}
 local preprocessAandBandC = function(imA, imB, imC)
 
   if opt.data_aug == 1 then
-      imA,imB,imC = data_aug.apply(imA,imB,imC)
+      imA,imB,imC = dataAug.apply(imA,imB,imC)
   end
 
   imA = image.scale(imA, loadSize[2], loadSize[2])
