@@ -55,7 +55,8 @@ th -ldisplay.start 8000 0.0.0.0
 - Finally, test the model:
 ```bash
 DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask name=mGAN which_epoch=50 phase=test th test.lua
-- If we don't have the ground-truth:
+```
+- If we do not have the ground-truth:
 ```bash
 DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask/val name=mGAN which_epoch=50 phase=val th inference.lua
 ```
