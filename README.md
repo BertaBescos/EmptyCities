@@ -8,7 +8,7 @@ Torch implementation for learning a mapping from input images that contain dynam
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
 Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space  
-[Berta Bescos], [Cesar Cadena](http://n.ethz.ch/~cesarc/), [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart]   
+[Berta Bescos], [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart], [Cesar Cadena](http://n.ethz.ch/~cesarc/)
 CoRL, 2018.
 
 ## Setup
