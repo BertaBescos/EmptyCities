@@ -1,7 +1,7 @@
 
 # EmptyCities
 
-Torch implementation for learning a mapping from input images that contain dynamic objects to output images which are static, for example:
+Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static, for example:
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
@@ -27,6 +27,24 @@ luarocks install https://raw.githubusercontent.com/szym/display/master/display-s
 git clone git@github.com:BertaBescos/EmptyCities.git
 cd EmptyCities
 ```
+## Models
+Download the pre-trained models with the following script. You need to rename the model (*e.g.* `mGAN` to `/checkpoints/mGAN/latest_net_G.t7`) after the download has finished.
+```bash
+bash ./models/download_model.sh mGAN
+```
+- `mGAN`: trained only on synthetic data coming from [CARLA](http://carla.org/).
+- `mGAN_DA`: trained on synthetic data coming from CARLA with data augmentation.
+- `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
+- `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
+## Test
+- Test one image
+```bash
+DATA_ROOT=/path/to/data/ name=expt_name phase=val th test.lua
+```
+
+
+
+
 - Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
 ```bash
 bash ./datasets/download_dataset.sh facades
