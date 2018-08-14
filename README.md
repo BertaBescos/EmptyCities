@@ -1,5 +1,5 @@
-
 # EmptyCities
+Berta Bescos, [Jose Neira](http://webdiis.unizar.es/~neira/), Roland Siegwart, [Cesar Cadena](http://n.ethz.ch/~cesarc/)
 
 [[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]]()
 
