@@ -47,6 +47,7 @@ torch.manualSeed(opt.manualSeed)
 torch.setdefaulttensortype('torch.FloatTensor')
 
 opt.netG_name = opt.name .. '/' .. opt.which_epoch .. '_net_G'
+local netSS_name = 'SemSeg/erfnet.net'
 
 function pause ()
     print("Press any key to continue.")
@@ -76,7 +77,8 @@ print('checkpoints_dir', opt.checkpoints_dir)
 local netG = util.load(paths.concat(opt.checkpoints_dir, opt.netG_name .. '.t7'), opt)
 netG:evaluate()
 print(netG)
-local SemSeg = '/home/bescosb/pix2pix_0.1/ss_models/erfnet_scratch.net'
+loc
+local SemSeg = paths.concat(opt.checkpoints_dir, netSS_name)
 local netSS = torch.load(SemSeg)
 netSS:evaluate()
 print(netSS)
