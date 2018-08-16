@@ -45,7 +45,7 @@ We provide some images in `/examples` you can run our model on. For example:
 ```bash
 input=examples/input.png qlua test.lua
 ```
-- You can also store the inpainted result and the binary mask thas has been used.
+- You can also store the inpainted result and the binary mask that has been used.
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
 ```
