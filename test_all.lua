@@ -302,7 +302,9 @@ else
 	if opt.output ~= '' then
 		image.save(opt.output, output[1])
 		if opt.mask == '' then
-			image.save(opt.mask_output, inputMask[1])
+			local ext = string.sub(opt.output,-4)
+			path_mask = string.gsub(opt.output,ext,"_mask.png")
+			image.save(path_mask, inputMask[1])
 		end
 	else
 		winqt0 = image.display{image=output[1], win=winqt0}
