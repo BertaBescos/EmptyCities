@@ -29,6 +29,7 @@ luarocks install https://raw.githubusercontent.com/szym/display/master/display-s
 git clone git@github.com:BertaBescos/EmptyCities.git
 cd EmptyCities
 ```
+
 ### Models
 Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
 - `mGAN`: trained only on synthetic data coming from [CARLA](http://carla.org/).
@@ -59,6 +60,20 @@ input=examples/input.png mask=examples/mask.png output=examples/output.png th te
 ```
 
 ### Test
+- If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `val` and keep the results in `./results`. Images within the folder `val` should be RGB images of any size.
+```bash
+DATA_ROOT=/path/to/data/ th test.lua
+```
+- If you prefer to feed the dynamic/static binary masks, you should concatenate it to the RGB image. We provide a python script for this.
+```bash
+DATA_ROOT=/path/to/data/ mask=1 th test.lua
+```
+- Finally, if the groundtruth images are available you should concatenate them too (RGB | GT | Mask).
+```bash
+DATA_ROOT=/path/to/data/ mask=1 target=1 th test.lua
+```
+
+### Train
 
 - Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
 ```bash
