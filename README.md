@@ -3,7 +3,7 @@
 
 [[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]]()
 
-Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static, for example:
+Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static. In the example below, the top images are fed one by one into our model. The bottom row are the obtained results:
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
@@ -35,29 +35,30 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 - `mGAN_DA`: trained on synthetic data coming from CARLA with data augmentation.
 - `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
-## Test
-- Test one image
+
+### Inference
+- You can fastly test our model with one image.
 ```bash
-input=/path/to/input/image/ th test.lua
+input=/path/to/input/image/ qlua test.lua
 ```
-For example:
+We provide some images in `/examples` you can run our model on. For example:
 ```bash
-input=examples/input.png th test.lua
+input=examples/input.png qlua test.lua
 ```
-- If you want to store the result:
+- You can also store the inpainted result and the binary mask thas has been used.
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
 ```
-For example:
+In the following example the binary mask is stored in `/examples/output_mask.png`:
 ```bash
 input=examples/input.png output=examples/output.png th test.lua
 ```
-- If the mask that has been stored in `examples/mask_output.png` is not accurate, you can provide a better one:
+- If the stored mask is not accurate enough, you can provide yourself a better one:
 ```bash
 input=examples/input.png mask=examples/mask.png output=examples/output.png th test.lua
 ```
 
-
+### Test
 
 - Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
 ```bash
