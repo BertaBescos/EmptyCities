@@ -3,12 +3,12 @@
 
 [[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]]()
 
-Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static, for example:
+Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static. In the example below, the top images are fed one by one into our model. The bottom row are the obtained results:
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
 Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space  
-[Berta Bescos], [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart], [Cesar Cadena](http://n.ethz.ch/~cesarc/)
+[Berta Bescos], [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart], [Cesar Cadena](http://n.ethz.ch/~cesarc/)  
 CoRL, 2018.
 
 ## Setup
@@ -29,20 +29,51 @@ luarocks install https://raw.githubusercontent.com/szym/display/master/display-s
 git clone git@github.com:BertaBescos/EmptyCities.git
 cd EmptyCities
 ```
+
 ### Models
 Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
 - `mGAN`: trained only on synthetic data coming from [CARLA](http://carla.org/).
 - `mGAN_DA`: trained on synthetic data coming from CARLA with data augmentation.
 - `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
-## Test
-- Test one image
+
+### Inference
+- You can fastly test our model with one image.
 ```bash
-DATA_ROOT=/path/to/data/ name=expt_name phase=val th test.lua
+input=/path/to/input/image/ qlua test.lua
+```
+We provide some images in `/examples` you can run our model on. For example:
+```bash
+input=examples/input.png qlua test.lua
+```
+- You can also store the inpainted result and the binary mask that has been used.
+```bash
+input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
+```
+In the following example the binary mask is stored in `/examples/output_mask.png`:
+```bash
+input=examples/input.png output=examples/output.png th test.lua
+```
+- If the stored mask is not accurate enough, you can provide yourself a better one:
+```bash
+input=examples/input.png mask=examples/mask.png output=examples/output.png th test.lua
 ```
 
+### Test
+- If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `val` and keep the results in `./results`. Images within the folder `val` should be RGB images of any size.
+```bash
+DATA_ROOT=/path/to/data/ th test.lua
+```
+- If you prefer to feed the dynamic/static binary masks, you should concatenate it to the RGB image. We provide a python script for this.
+```bash
+DATA_ROOT=/path/to/data/ mask=1 th test.lua
+```
+- Finally, if the groundtruth images are available you should concatenate them too (RGB | GT | Mask).
+```bash
+DATA_ROOT=/path/to/data/ mask=1 target=1 th test.lua
+```
 
-
+### Train
 
 - Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
 ```bash
