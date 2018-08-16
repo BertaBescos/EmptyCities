@@ -42,11 +42,19 @@ input=/path/to/input/image/ th test.lua
 ```
 For example:
 ```bash
-input=/images/input.png th test.lua
+input=examples/input.png th test.lua
 ```
 - If you want to store the result:
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
+```
+For example:
+```bash
+input=examples/input.png output=examples/output.png th test.lua
+```
+- If the mask that has been stored in `examples/mask_output.png` is not accurate, you can provide a better one:
+```bash
+input=examples/input.png mask=examples/mask.png output=examples/output.png th test.lua
 ```
 
 
