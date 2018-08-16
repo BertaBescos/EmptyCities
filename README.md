@@ -38,9 +38,16 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 ## Test
 - Test one image
 ```bash
-DATA_ROOT=/path/to/data/ name=expt_name phase=val th test.lua
+input=/path/to/input/image/ th test.lua
 ```
-
+For example:
+```bash
+input=/images/input.png th test.lua
+```
+- If you want to store the result:
+```bash
+input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
+```
 
 
 
