@@ -37,7 +37,8 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 - `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
 
-### Inference
+## Inference
+
 - You can fastly test our model with one image.
 ```bash
 input=/path/to/input/image/ qlua test.lua
@@ -59,7 +60,8 @@ input=examples/input.png output=examples/output.png th test.lua
 input=examples/input.png mask=examples/mask.png output=examples/output.png th test.lua
 ```
 
-### Test
+## Test
+
 - If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `val` and keep the results in `./results`. Images within the folder `val` should be RGB images of any size.
 ```bash
 DATA_ROOT=/path/to/data/ th test.lua
@@ -73,7 +75,8 @@ DATA_ROOT=/path/to/data/ mask=1 th test.lua
 DATA_ROOT=/path/to/data/ mask=1 target=1 th test.lua
 ```
 
-### Train
+## Train
+
 - The simplest case trains only with synthetic CARLA data. In the subfolder `/path/to/synth/data/train/` there should be the concatenated (RGB | GT | Mask) images. The utilized masks come from this simulator too, and therefore do not use the semantic segmentation model.
 ```bash
 DATA_ROOT=/path/to/synth/data/ th train.lua
