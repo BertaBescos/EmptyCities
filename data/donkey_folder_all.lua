@@ -39,40 +39,36 @@ local output_nc = opt.output_nc
 local loadSize   = {input_nc, opt.loadSize}
 local sampleSize = {input_nc, opt.fineSize}
 
-local preprocess = function(im)
-	if opt.data_aug == 1 then
-		im = data_aug.apply(im)
-	end
+local preprocess = function(imA, imB, imC)
 
-
-end
-
-local preprocessAandB = function(imA, imB)
-
-	if opt.data_aug == 1 then
-			imA,imB,imB = data_aug.apply(imA,imB,imB)
+	if imB == nil then
+		if imC == nil then
+			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imA,imA) else 
+				imB = imA 
+				imC = imA 
+			end
+		else
+			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imA,imC) else imB = imA end
+		end
+	else
+		if imC == nil then
+			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imB,imA) else imC = imA end
+		else
+			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imB,imC) end
+		end
 	end
 
 	imA = image.scale(imA, loadSize[2], loadSize[2])
-	imB = image.scale(imB, loadSize[2], loadSize[2])
+  imB = image.scale(imB, loadSize[2], loadSize[2])
+  imC = image.scale(imC, loadSize[2], loadSize[2]) -- between 0 and 1
+  imC[imC:gt(0)] = 1
 
 	local perm = torch.LongTensor{3, 2, 1}
-
-	if input_nc == 3 then
-		imA = imA:index(1, perm)--:mul(256.0): brg, rgb
+	imA = imA:index(1, perm)--:mul(256.0): brg, rgb
 	imB = imB:index(1, perm)
-	end
-	imA = imA:mul(2):add(-1)
-	imB = imB:mul(2):add(-1)
-
-	assert(imA:max()<=1,"A: badly scaled inputs")
-	assert(imA:min()>=-1,"A: badly scaled inputs")
-	assert(imB:max()<=1,"B: badly scaled inputs")
-	assert(imB:min()>=-1,"B: badly scaled inputs")
- 
+	
 	local oW = sampleSize[2]
 	local oH = sampleSize[2]
-
 	local iH = imA:size(2)
 	local iW = imA:size(3)
 
@@ -86,9 +82,27 @@ local preprocessAandB = function(imA, imB)
 	if iH ~= oH or iW ~= oW then 
 		imA = image.crop(imA, w1, h1, w1 + oW, h1 + oH)
 		imB = image.crop(imB, w1, h1, w1 + oW, h1 + oH)
+		imC = image.crop(imC, w1, h1, w1 + oW, h1 + oH)
 	end
+
+	imA = imA:mul(2):add(-1)
+  imB = imB:mul(2):add(-1)
+  imC = imC:mul(2):add(-1) -- min(imC) = -1 & max(imC) = 1
+  assert(imA:max()<=1,"A: badly scaled inputs")
+  assert(imA:min()>=-1,"A: badly scaled inputs")
+  assert(imB:max()<=1,"B: badly scaled inputs")
+  assert(imB:min()>=-1,"B: badly scaled inputs")
+  assert(imC:max()<=1,"C: badly scaled inputs")
+  assert(imC:min()>=-1,"C: badly scaled inputs")
 	
-	return imA, imB
+  if opt.target == '' then
+  	imB = nil
+  end
+  if opt.mask == '' then
+  	imC = nil
+  end
+
+	return imA, imB, imC
 end
 
 
@@ -117,7 +131,8 @@ local function loadImage(path)
 		imB = image.crop(input, w/3, 0, 2*w/3, h)
 		imC = image.crop(input, 2*w/3, 0, w, h)
 	end
-	 return imA, imB, imC
+	
+	return imA, imB, imC
 end
 
 -- channel-wise mean and std. Calculate or load them from disk later in the script.
@@ -127,21 +142,20 @@ local mean,std
 local trainHook = function(self, path)
 	collectgarbage()
 	local imA, imB, imC = loadImage(path)
+	imA, imB, imC = preprocess(imA, imB, imC)
+
 	if imB ~= nil and imC ~= nil then
-		imA, imB, imC = preprocessAandBandC(imA, imB, imC)
 		im = torch.cat(imA, imB, 1)
 		im = torch.cat(im, imC, 1)
 	end
 	if imB == nil and imC ~= nil then
-		imA, imC = preprocessAandC(imA, imC)
 		im = torch.cat(imA, imC, 1)
 	end
 	if imB ~= nil and imC == nil then
-		imA, imB = preprocessAandB(imA, imB)
 		im = torch.cat(imA, imB, 1)
 	end
 	if imB == nil and imC == nil then
-		im = preprocess(imA)
+		im = imA
 	end
 
 	print(im:size())
@@ -164,10 +178,19 @@ print('trainCache', trainCache)
 print('Creating train metadata')
 --   print(opt.data)
 print('serial batch:, ', opt.serial_batches)
+
+nc = input_nc
+if opt.target ~= '' then
+	nc = nc + output_nc
+end
+if opt.mask ~= '' then
+	nc = nc + 3
+end
+
 trainLoader = dataLoader{
 		paths = {opt.data},
 		loadSize = {input_nc, loadSize[2], loadSize[2]},
-		sampleSize = {input_nc+output_nc, sampleSize[2], sampleSize[2]},
+		sampleSize = {nc, sampleSize[2], sampleSize[2]},
 		split = 100,
 		serial_batches = opt.serial_batches, 
 		verbose = true

@@ -89,7 +89,7 @@ print(netG)
 if opt.mask == '' then
 	netSS = torch.load(paths.concat(opt.checkpoints_dir, netSS_name))
 	netSS:evaluate()
-	print(netSS)
+	-- print(netSS)
 	netDynSS = nn.Sequential()
 	local convDyn = nn.SpatialFullConvolution(20,1,1,1,1,1)
 	local w, dw = convDyn:parameters()
@@ -188,13 +188,13 @@ if opt.DATA_ROOT ~= '' then
 			inputMask = netDynSS:forward(inputMask)
 		else
 			if opt.target == '' then
-				idx_C = {input_nc + 1,input_nc + output_nc}
+				idx_C = {input_nc + 1,input_nc + 1}
 			else
 				idx_C = {input_nc + output_nc + 1,input_nc + output_nc + 1}
 			end
 			inputMask = data_curr[{ {}, idx_C, {}, {} }]
 			inputMask = inputMask:cuda()
-		end
+		end	
 
 		inputGAN = torch.cat(inputGray,inputMask,2)
 		output = netG:forward(inputGAN)
@@ -205,8 +205,9 @@ if opt.DATA_ROOT ~= '' then
 			idx_B = {input_nc + 1,input_nc + output_nc}
 			targetRGB = data_curr[{ {}, idx_B, {}, {} }]
 			targetGray = image.rgb2y(targetRGB[1])
+			targetGray = targetGray:resize(1,targetGray:size(1),targetGray:size(2),targetGray:size(3))
+			targetGray = targetGray:add(1):div(2)
 		end
-		targetGray = targetGray:add(1):div(2)
 
 		paths.mkdir(paths.concat(opt.results_dir, opt.netG_name .. '_' .. opt.phase))
 		local image_dir = paths.concat(opt.results_dir, opt.netG_name .. '_' .. opt.phase, 'images')
@@ -216,15 +217,22 @@ if opt.DATA_ROOT ~= '' then
 		if opt.target ~= '' then
 			paths.mkdir(paths.concat(image_dir,'target'))
 		end
+		if opt.mask == '' then
+			paths.mkdir(paths.concat(image_dir,'mask'))
+		end
 
 		for i=1, opt.batchSize do
 			image.save(paths.concat(image_dir,'input',filepaths_curr[i]), image.scale(inputGray[i],inputGray[i]:size(2),inputGray[i]:size(3)/opt.aspect_ratio))
 			image.save(paths.concat(image_dir,'output',filepaths_curr[i]), image.scale(output[i],output[i]:size(2),output[i]:size(3)/opt.aspect_ratio))
 		end
-
 		if opt.target ~= '' then
 			for i=1, opt.batchSize do
 				image.save(paths.concat(image_dir,'target',filepaths_curr[i]), image.scale(targetGray[i],targetGray[i]:size(2),targetGray[i]:size(3)/opt.aspect_ratio))
+			end
+		end
+		if opt.mask == '' then
+			for i=1, opt.batchSize do	
+				image.save(paths.concat(image_dir,'mask',filepaths_curr[i]), image.scale(inputMask[i]:float(),inputMask[i]:size(2),inputMask[i]:size(3)/opt.aspect_ratio))
 			end
 		end
 
@@ -236,8 +244,9 @@ if opt.DATA_ROOT ~= '' then
 			disp = require 'display'
 			disp.image(util.scaleBatch(inputGray,100,100),{win=opt.display_id, title='input'})
 			disp.image(util.scaleBatch(output,100,100),{win=opt.display_id+1, title='output'})
-			disp.image(util.scaleBatch(targetGray,100,100),{win=opt.display_id+2, title='target'})
-			
+			if opt.target ~= '' then
+				disp.image(util.scaleBatch(targetGray,100,100),{win=opt.display_id+2, title='target'})
+			end
 			print('Displayed images')
 		end
 		
@@ -246,9 +255,7 @@ if opt.DATA_ROOT ~= '' then
 
 	-- make webpage
 	io.output(paths.concat(opt.results_dir,opt.netG_name .. '_' .. opt.phase, 'index.html'))
-
 	io.write('<table style="text-align:center;">')
-
 	if opt.target ~= '' then
 		io.write('<tr><td>Image #</td><td>Input</td><td>Output</td><td>Ground Truth</td></tr>')
 		for i=1, #filepaths do
@@ -269,10 +276,8 @@ if opt.DATA_ROOT ~= '' then
 			io.write('</tr>')
 		end
 	end
-
 	io.write('</table>')
 else
-
 	inputRGB = loadImage(opt.input,0)
 	if opt.mask ~= '' then
 		inputMask = loadImage(opt.mask,1)
@@ -281,7 +286,6 @@ else
 		inputBGR = inputBGR:add(1):mul(0.5)
 		inputBGR[1][1] = inputRGB[1][3]:add(1):mul(0.5)
 		inputBGR[1][3] = inputRGB[1][1]:add(1):mul(0.5)
-
 		inputMask = netSS:forward(inputBGR)
 		inputMask = netDynSS:forward(inputMask)
 	end
