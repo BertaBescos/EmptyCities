@@ -43,10 +43,7 @@ local preprocess = function(imA, imB, imC)
 
 	if imB == nil then
 		if imC == nil then
-			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imA,imA) else 
-				imB = imA 
-				imC = imA 
-			end
+			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imA,imA) else imB, imC = imA, imA end
 		else
 			if opt.data_aug == 1 then imA,imB,imC = data_aug.apply(imA,imA,imC) else imB = imA end
 		end
