@@ -101,7 +101,7 @@ Models are saved by default to `./checkpoints/mGAN` (can be changed by passing `
 See `opt` in train.lua for additional training options.
 
 ## Datasets
-Our synthetic dataset has been generated with [CARLA 0.8.2](https://drive.google.com/file/d/1ZtVt1AqdyGxgyTm69nzuwrOYoPUn_Dsm/view). Within the folder `CARLA_` we provide some python and bash scripts to generate the paired images. The files inside `/CARLA/python` can be copied to the folder `/CARLA_0.8.2/PythonClient`
+Our synthetic dataset has been generated with [CARLA 0.8.2](https://drive.google.com/file/d/1ZtVt1AqdyGxgyTm69nzuwrOYoPUn_Dsm/view). Within our folder `/scripts/CARLA` we provide some python and bash scripts to generate the paired images. The files inside `/scripts/CARLA` can be copied to the folder `/CARLA_0.8.2/PythonClient` (from CARLA 0.8.2 installation).
 - The following bash script stores the images with dynamic objects, as well as the control inputs of the driving car and the trajectory that has been followed in `Control.txt` and `Trajectory.txt` respectively.
 ```bash
 bash CARLA/CreateDynamicDataset.sh
