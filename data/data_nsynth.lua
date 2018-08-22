@@ -27,16 +27,16 @@ function data.new(n, opt_)
 		self.threads = Threads(n,
 			function() require 'torch' end,
 			function(idx)
-					opt = options
-					tid = idx
-					local seed = (opt.manualSeed and opt.manualSeed or 0) + idx
-					torch.manualSeed(seed)
-					torch.setnumthreads(1)
-					print(string.format('Starting donkey with id: %d seed: %d', tid, seed))
-					assert(options, 'options not found')
-					assert(opt, 'opt not given')
-					print(opt)
-					paths.dofile(donkey_file)
+				opt = options
+				tid = idx
+				local seed = (opt.manualSeed and opt.manualSeed or 0) + idx
+				torch.manualSeed(seed)
+				torch.setnumthreads(1)
+				print(string.format('Starting donkey with id: %d seed: %d', tid, seed))
+				assert(options, 'options not found')
+				assert(opt, 'opt not given')
+				print(opt)
+				paths.dofile(donkey_file)
 				end)
 	else
 		if donkey_file then paths.dofile(donkey_file) end
