@@ -24,7 +24,7 @@ opt = {
 	display = 1,                -- display samples while training. 0 = false
 	display_id = 200,           -- display window id.
 	gpu = 1,                    -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-	phase = 'val',              -- train, val, test ,etc
+	phase = 'test',              -- train, val, test ,etc
 	aspect_ratio = 1.0,         -- aspect ratio of result images
 	name = 'mGAN',              -- name of experiment, selects which model to run, should generally should be passed on command line
 	input_nc = 3,               -- #  of input image channels

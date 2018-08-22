@@ -24,7 +24,7 @@ opt.data = paths.concat(os.getenv('DATA_ROOT'), opt.phase)
 paths.dofile('data_aug.lua')
 
 if not paths.dirp(opt.data) then
-		error('Did not find directory: ' .. opt.data)
+	error('Did not find directory: ' .. opt.data)
 end
 
 -- a cache file of the training metadata (if doesnt exist, will be created)
@@ -56,9 +56,9 @@ local preprocess = function(imA, imB, imC)
 	end
 
 	imA = image.scale(imA, loadSize[2], loadSize[2])
-  imB = image.scale(imB, loadSize[2], loadSize[2])
-  imC = image.scale(imC, loadSize[2], loadSize[2]) -- between 0 and 1
-  imC[imC:gt(0)] = 1
+	imB = image.scale(imB, loadSize[2], loadSize[2])
+	imC = image.scale(imC, loadSize[2], loadSize[2]) -- between 0 and 1
+	imC[imC:gt(0)] = 1
 
 	local perm = torch.LongTensor{3, 2, 1}
 	imA = imA:index(1, perm)--:mul(256.0): brg, rgb
@@ -83,21 +83,21 @@ local preprocess = function(imA, imB, imC)
 	end
 
 	imA = imA:mul(2):add(-1)
-  imB = imB:mul(2):add(-1)
-  imC = imC:mul(2):add(-1) -- min(imC) = -1 & max(imC) = 1
-  assert(imA:max()<=1,"A: badly scaled inputs")
-  assert(imA:min()>=-1,"A: badly scaled inputs")
-  assert(imB:max()<=1,"B: badly scaled inputs")
-  assert(imB:min()>=-1,"B: badly scaled inputs")
-  assert(imC:max()<=1,"C: badly scaled inputs")
-  assert(imC:min()>=-1,"C: badly scaled inputs")
+	imB = imB:mul(2):add(-1)
+	imC = imC:mul(2):add(-1) -- min(imC) = -1 & max(imC) = 1
+	assert(imA:max()<=1,"A: badly scaled inputs")
+	assert(imA:min()>=-1,"A: badly scaled inputs")
+	assert(imB:max()<=1,"B: badly scaled inputs")
+	assert(imB:min()>=-1,"B: badly scaled inputs")
+	assert(imC:max()<=1,"C: badly scaled inputs")
+	assert(imC:min()>=-1,"C: badly scaled inputs")
 	
-  if opt.target == '' then
-  	imB = nil
-  end
-  if opt.mask == '' then
-  	imC = nil
-  end
+	if opt.target == '' then
+		imB = nil
+	end
+	if opt.mask == '' then
+		imC = nil
+	end
 
 	return imA, imB, imC
 end

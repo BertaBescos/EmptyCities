@@ -62,7 +62,7 @@ input=examples/input.png mask=examples/mask.png output=examples/output.png th te
 
 ## Test
 
-- If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `val` and keep the results in `./results`. Images within the folder `val` should be RGB images of any size.
+- If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `test` and keep the results in `./results/mGAN`. Images within the folder `test` should be RGB images of any size.
 ```bash
 DATA_ROOT=/path/to/data/ th test.lua
 ```
@@ -74,6 +74,8 @@ DATA_ROOT=/path/to/data/ mask=1 th test.lua
 ```bash
 DATA_ROOT=/path/to/data/ mask=1 target=1 th test.lua
 ```
+The test results will be saved to an html file here: `./results/mGAN/latest_net_G_val/index.html`.
+
 
 ## Train
 
@@ -85,70 +87,18 @@ DATA_ROOT=/path/to/synth/data/ th train.lua
 ```bash
 DATA_ROOT=/path/to/synth/data/ NSYTNH_DATA_ROOT=/path/to/real/data/ epoch_synth=50 pNonSynth=0.5 th train.lua
 ```
-
-
-
-
-
-- Download the dataset (e.g. [CMP Facades](http://cmp.felk.cvut.cz/~tylecr1/facade/)):
+- (CPU only) The same training command without using a GPU or CUDNN. Setting the environment variables `gpu=0 cudnn=0` forces CPU only
 ```bash
-bash ./datasets/download_dataset.sh facades
-```
-- Train the model
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask name=mGAN th train.lua
-```
-- If we want to add real data with a probability of 0.5 from epoch 50 on:
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask NSYNTH_DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask name=mGAN add_real_data=1 epoch_synth=50 pNonSynth=0.5 th train.lua
-```
-- If we do not have the masks:
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBFullMask NSYNTH_DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/FullMask name=SS add_real_data=1 epoch_synth=50 pNonSynth=0.5 th train_ss.lua
-```
-- (CPU only) The same training command without using a GPU or CUDNN. Setting the environment variables ```gpu=0 cudnn=0``` forces CPU only
-```bash
-DATA_ROOT=./datasets/facades name=facades_generation which_direction=BtoA gpu=0 cudnn=0 batchSize=10 save_epoch_freq=5 th train.lua
+DATA_ROOT=/path/to/synth/data/ gpu=0 cudnn=0 th train.lua
 ```
 - (Optionally) start the display server to view results as the model trains. ( See [Display UI](#display-ui) for more details):
 ```bash
 th -ldisplay.start 8000 0.0.0.0
 ```
 
-- Finally, test the model:
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/RGBMask name=mGAN which_epoch=50 phase=test th test.lua
-```
-- If we do not have the ground-truth:
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask/val name=mGAN which_epoch=50 phase=val th inference.lua
-```
-- If we do not have the masks:
-```bash
-DATA_ROOT=/home/bescosb/CARLA_0.8.2/dataset/data/CITYSCAPES/Mask/val name=mGAN which_epoch=50 phase=val th inference_ss.lua
-```
-The test results will be saved to an html file here: `./results/facades_generation/latest_net_G_val/index.html`.
-
-## Train
-```bash
-DATA_ROOT=/path/to/data/ name=expt_name th train.lua
-```
-
-Models are saved to `./checkpoints/expt_name` (can be changed by passing `checkpoint_dir=your_dir` in train.lua).
+Models are saved by default to `./checkpoints/mGAN` (can be changed by passing `checkpoint_dir=your_dir` and `name=your_name` in train.lua).
 
 See `opt` in train.lua for additional training options.
-
-## Test
-```bash
-DATA_ROOT=/path/to/data/ name=expt_name phase=val th test.lua
-```
-
-This will run the model named `expt_name` on all images in `/path/to/data/val`.
-
-Result images, and a webpage to view them, are saved to `./results/expt_name` (can be changed by passing `results_dir=your_dir` in test.lua).
-
-See `opt` in test.lua for additional testing options.
-
 
 ## Datasets
 Download the datasets using the following script. Some of the datasets are collected by other researchers. Please cite their papers if you use the data.

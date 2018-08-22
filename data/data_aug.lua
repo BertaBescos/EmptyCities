@@ -4,7 +4,7 @@ require 'torch'
 
 print('Loading data augmentation paramaters...')
 
-local data_aug = {}
+data_aug = {}
 
 function data_aug.apply(imA,imB,imC)
 
