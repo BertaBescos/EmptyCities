@@ -7,8 +7,8 @@ do
 		python PythonClient/client_example.py $w $id -i -a
 		
 		src="_out/episode_0000/*"
-		destWId="/home/bescosb/CARLA_0.8.2/dataset/Town02_val/"$w"_"$id"/"
-		dest="/home/bescosb/CARLA_0.8.2/dataset/Town02_val/"$w"_"$id"/Dynamic/"
+		destWId="./datasets/CARLA/Town02_val/"$w"_"$id"/"
+		dest="./home/bescosb/CARLA_0.8.2/dataset/Town02_val/"$w"_"$id"/Dynamic/"
 		ctrl="/home/bescosb/CARLA_0.8.2/Control.txt"
 		trj="/home/bescosb/CARLA_0.8.2/Trajectory.txt"
 		mkdir $destWId
