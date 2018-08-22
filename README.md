@@ -110,7 +110,7 @@ bash CARLA/CreateDynamicDataset.sh
 ```bash
 bash CARLA/CreateStaticDataset.sh
 ```
-For better adaptation to real world images, we have used the [Cityscapes dataset]
+For better adaptation to real world images, we have used the [Cityscapes dataset](https://www.cityscapes-dataset.com/).
 
 ## Setup Training and Test data
 ### Generating Pairs
