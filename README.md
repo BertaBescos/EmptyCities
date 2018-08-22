@@ -101,7 +101,9 @@ Models are saved by default to `./checkpoints/mGAN` (can be changed by passing `
 See `opt` in train.lua for additional training options.
 
 ## Datasets
-Download the datasets using the following script. Some of the datasets are collected by other researchers. Please cite their papers if you use the data.
+Our synthetic dataset has been generated with CARLA 0.8.2. Within the folder `CARLA` we provide some python scripts to generate the paired images. g
+
+As a real city dataset, we have used the Cityscapes dataset, which can be downloaded from [here](https://www.cityscapes-dataset.com/).
 ```bash
 bash ./datasets/download_dataset.sh dataset_name
 ```
