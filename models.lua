@@ -92,7 +92,7 @@ function defineG_unet(input_nc, output_nc, ngf)
     
     netG = nn.gModule({e1},{o1})
     
-    graph.dot(netG.fg,'netG','unet') --bbescos
+    --graph.dot(netG.fg,'netG','unet') --bbescos
     --graph.dot(netG.fg,'netG')
 
     return netG
@@ -154,7 +154,7 @@ function defineG_unet_upsampling(input_nc, output_nc, ngf)
     
     netG = nn.gModule({e1},{o1})
     
-    graph.dot(netG.fg,'netG','unet_up') --bbescos
+    --graph.dot(netG.fg,'netG','unet_up') --bbescos
     --graph.dot(netG.fg,'netG')
 
     return netG
@@ -235,7 +235,7 @@ function defineG_2unet(input_nc, output_nc, mask_nc, ngf) --bbescos
 
     netG = nn.gModule({e1},{o1,o2})
     
-    graph.dot(netG.fg,'netG','2unet')
+    --graph.dot(netG.fg,'netG','2unet')
     
     return netG
 end

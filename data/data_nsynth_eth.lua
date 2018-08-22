@@ -20,7 +20,7 @@ function data.new(n, opt_)
       self[k] = v
    end
 
-   local donkey_file = 'donkey_folder_all.lua'
+   local donkey_file = 'donkey_folder_nsynth.lua'
 --   print('n..' .. n)
    if n > 0 then
       local options = opt_
