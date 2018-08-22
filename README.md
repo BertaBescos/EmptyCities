@@ -101,18 +101,16 @@ Models are saved by default to `./checkpoints/mGAN` (can be changed by passing `
 See `opt` in train.lua for additional training options.
 
 ## Datasets
-Our synthetic dataset has been generated with CARLA 0.8.2. Within the folder `CARLA` we provide some python scripts to generate the paired images. g
-
-As a real city dataset, we have used the Cityscapes dataset, which can be downloaded from [here](https://www.cityscapes-dataset.com/).
+Our synthetic dataset has been generated with CARLA 0.8.2. Within the folder `CARLA` we provide some python and bash scripts to generate the paired images. 
+- The following bash script stores the images with dynamic objects, as well as the control inputs of the driving car and the trajectory that has been followed in `Control.txt` and `Trajectory.txt` respectively.
 ```bash
-bash ./datasets/download_dataset.sh dataset_name
+bash CARLA/CreateDynamicDataset.sh
 ```
-- `facades`: 400 images from [CMP Facades dataset](http://cmp.felk.cvut.cz/~tylecr1/facade/). [[Citation](datasets/bibtex/facades.tex)]
-- `cityscapes`: 2975 images from the [Cityscapes training set](https://www.cityscapes-dataset.com/).  [[Citation](datasets/bibtex/cityscapes.tex)]
-- `maps`: 1096 training images scraped from Google Maps
-- `edges2shoes`: 50k training images from [UT Zappos50K dataset](http://vision.cs.utexas.edu/projects/finegrained/utzap50k/). Edges are computed by [HED](https://github.com/s9xie/hed) edge detector + post-processing.
-[[Citation](datasets/bibtex/shoes.tex)]
-- `edges2handbags`: 137K Amazon Handbag images from [iGAN project](https://github.com/junyanz/iGAN). Edges are computed by [HED](https://github.com/s9xie/hed) edge detector + post-processing. [[Citation](datasets/bibtex/handbags.tex)]
+- This script reads the previous stored `Control.txt` file and tries to replicate the same trajectory in a scene in which there are no other dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
+```bash
+bash CARLA/CreateStaticDataset.sh
+```
+For better adaptation to real world images, we have used the [Cityscapes dataset]
 
 ## Setup Training and Test data
 ### Generating Pairs

@@ -121,7 +121,7 @@ if opt.NSYNTH_DATA_ROOT ~= '' then
 	 print("Non Synthetic Validation Dataset Size: ", val_nsynth_data:size())
 end
 
-opt.phase = train
+opt.phase = 'train'
 
 ----------------------------------------------------------------------------
 
