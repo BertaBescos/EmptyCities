@@ -112,18 +112,6 @@ bash ./datasets/download_dataset.sh dataset_name
 [[Citation](datasets/bibtex/shoes.tex)]
 - `edges2handbags`: 137K Amazon Handbag images from [iGAN project](https://github.com/junyanz/iGAN). Edges are computed by [HED](https://github.com/s9xie/hed) edge detector + post-processing. [[Citation](datasets/bibtex/handbags.tex)]
 
-## Models
-Download the pre-trained models with the following script. You need to rename the model (e.g. `facades_label2image` to `/checkpoints/facades/latest_net_G.t7`) after the download has finished.
-```bash
-bash ./models/download_model.sh model_name
-```
-- `facades_label2image` (label -> facade): trained on the CMP Facades dataset.
-- `cityscapes_label2image` (label -> street scene): trained on the Cityscapes dataset.
-- `cityscapes_image2label` (street scene -> label): trained on the Cityscapes dataset.
-- `edges2shoes` (edge -> photo): trained on UT Zappos50K dataset.
-- `edges2handbags` (edge -> photo): trained on Amazon handbags images.
-- `day2night` (daytime scene -> nighttime scene): trained on around 100 [webcams](http://transattr.cs.brown.edu/).
-
 ## Setup Training and Test data
 ### Generating Pairs
 We provide a python script to generate training data in the form of pairs of images {A,B}, where A and B are two different depicitions of the same underlying scene. For example, these might be pairs {label map, photo} or {bw image, color image}. Then we can learn to translate A to B or B to A:

@@ -121,6 +121,8 @@ if opt.NSYNTH_DATA_ROOT ~= '' then
 	 print("Non Synthetic Validation Dataset Size: ", val_nsynth_data:size())
 end
 
+opt.phase = train
+
 ----------------------------------------------------------------------------
 
 -- function for initializing model weights
@@ -785,9 +787,11 @@ for epoch = 1, opt.niter do
 				print('save to the disk')
 				for i2=1, fake_B:size(1) do
 					if image_out==nil then 
-						image_out = torch.cat(realGray_A[i2]:float(),fake_B[i2]:float(),3)
+						image_out = torch.cat(realGray_A[i2]:float():add(1):div(2),
+							fake_B[i2]:float():add(1):div(2),3)
 					else
-						image_out = torch.cat(image_out, torch.cat(realGray_A[i2]:float(),fake_B[i2]:float(),3), 2) 
+						image_out = torch.cat(image_out, torch.cat(realGray_A[i2]:float():add(1):div(2),
+							fake_B[i2]:float():add(1):div(2),3), 2) 
 					end
 				end
 			end
