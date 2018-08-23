@@ -43,9 +43,9 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 ```bash
 input=/path/to/input/image/ qlua test.lua
 ```
-We provide some images in `/examples` you can run our model on. For example:
+We provide some images in `/imgs` you can run our model on. For example:
 ```bash
-input=examples/input.png qlua test.lua
+input=imgs/input.png qlua test.lua
 ```
 - You can also store the inpainted result and the binary mask that has been used.
 ```bash
@@ -53,11 +53,11 @@ input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
 ```
 In the following example the binary mask is stored in `/examples/output_mask.png`:
 ```bash
-input=examples/input.png output=examples/output.png th test.lua
+input=imgs/input.png output=imgs/output.png th test.lua
 ```
 - If the stored mask is not accurate enough, you can provide yourself a better one:
 ```bash
-input=examples/input.png mask=examples/mask.png output=examples/output.png th test.lua
+input=imgs/input.png mask=imgs/mask.png output=imgs/output.png th test.lua
 ```
 
 ## Test
