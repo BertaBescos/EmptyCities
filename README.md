@@ -104,35 +104,30 @@ See `opt` in train.lua for additional training options.
 Our synthetic dataset has been generated with [CARLA 0.8.2](https://drive.google.com/file/d/1ZtVt1AqdyGxgyTm69nzuwrOYoPUn_Dsm/view). Within our folder `/scripts/CARLA` we provide some python and bash scripts to generate the paired images. The files inside `/scripts/CARLA` can be copied to the folder `/CARLA_0.8.2/PythonClient` (from CARLA 0.8.2 installation).
 - The following bash scripts store the images with dynamic objects in `path/to/dataset/`, as well as the control inputs of the driving car and the trajectory that has been followed in `Control.txt` and `Trajectory.txt` respectively. CARLA provides two different towns setups: Town01 has been used for generating the training an validations sets, and Town02 for the testing set. 
 ```bash
-bash CARLA/CreateDynamicDatasetTown01.sh path/to/dataset/
+bash scripts/CARLA/CreateDynamicDatasetTown01.sh path/to/dataset/
 ```
 ```bash
-bash CARLA/CreateDynamicDatasetTown02.sh
+bash scripts/CARLA/CreateDynamicDatasetTown02.sh path/to/dataset/
 ```
 - These scripts read the previous stored `Control.txt` files and tries to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
 ```bash
-bash CARLA/CreateStaticDatasetTown01.sh
+bash scripts/CARLA/CreateStaticDatasetTown01.sh path/to/dataset/
 ```
 ```bash
-bash CARLA/CreateStaticDatasetTown02.sh
+bash scripts/CARLA/CreateStaticDatasetTown02.sh path/to/dataset/
 ```
 For better adaptation to real world images, we have used the [Cityscapes dataset](https://www.cityscapes-dataset.com/).
 
 ## Setup Training/Validation/Test data
 ### Generating Pairs
-We provide a python script to generate training data in the form of pairs of images {A,B}, where A and B are two different depicitions of the same underlying scene. For example, these might be pairs {label map, photo} or {bw image, color image}. Then we can learn to translate A to B or B to A:
-
-Create folder `/path/to/data` with subfolders `A` and `B`. `A` and `B` should each have their own subfolders `train`, `val`, `test`, etc. In `/path/to/data/A/train`, put training images in style A. In `/path/to/data/B/train`, put the corresponding images in style B. Repeat same for other data splits (`val`, `test`, etc).
-
-Corresponding images in a pair {A,B} must be the same size and have the same filename, e.g. `/path/to/data/A/train/1.jpg` is considered to correspond to `/path/to/data/B/train/1.jpg`.
-
-Once the data is formatted this way, call:
+We provide a bash and a python script to generate the CARLA training, validation and test data in the needed format. Once the CARLA images are within the format `TrainTown01/xx_xxx/Dynamic/RGB/xxxxx.png` the bash script `/scripts/setup/setup.sh` puts them in form of three concatenated images {A,B,C} where A is the image with dynamic objects, B is the groundtruth static image, and C is the dynamic/static binary mask. This images are stored in `/path/to/output/data/ABC/` within the subfolders `train`, `test` and `val`. 
 ```bash
-python scripts/combine_A_and_B.py --fold_A /path/to/data/A --fold_B /path/to/data/B --fold_AB /path/to/data
+bash scripts/setup/setupCARLA.sh /path/to/input/data/ /path/to/output/data/
 ```
-
-This will combine each pair of images (A,B) into a single image file, ready for training.
-
+Also, to format the Cityscapes images we provide the scripts
+```bash
+bash scripts/setup/setupCityscapes.sh /path/to/input/data/ /path/to/output/data/
+```
 **Further notes**: 
 
 ## Display UI
