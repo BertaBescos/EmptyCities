@@ -153,10 +153,3 @@ for folder in "${val_folders[@]}"; do
 	done
 	imOut_ini=$imOut
 done
-
-dest_ABC=$dest"ABC/"
-if [ ! -d "$dest_ABC" ]; then
-	mkdir $dest_ABC
-fi
-
-python combine_A_and_B_and_C.py --fold_A $dest_A --fold_B $dest_B --fold_C $dest_C --fold_ABC $dest_ABC
