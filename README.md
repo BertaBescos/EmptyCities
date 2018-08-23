@@ -102,17 +102,23 @@ See `opt` in train.lua for additional training options.
 
 ## Datasets
 Our synthetic dataset has been generated with [CARLA 0.8.2](https://drive.google.com/file/d/1ZtVt1AqdyGxgyTm69nzuwrOYoPUn_Dsm/view). Within our folder `/scripts/CARLA` we provide some python and bash scripts to generate the paired images. The files inside `/scripts/CARLA` can be copied to the folder `/CARLA_0.8.2/PythonClient` (from CARLA 0.8.2 installation).
-- The following bash script stores the images with dynamic objects, as well as the control inputs of the driving car and the trajectory that has been followed in `Control.txt` and `Trajectory.txt` respectively.
+- The following bash scripts store the images with dynamic objects in `path/to/dataset/`, as well as the control inputs of the driving car and the trajectory that has been followed in `Control.txt` and `Trajectory.txt` respectively. CARLA provides two different towns setups: Town01 has been used for generating the training an validations sets, and Town02 for the testing set. 
 ```bash
-bash CARLA/CreateDynamicDataset.sh
+bash CARLA/CreateDynamicDatasetTown01.sh path/to/dataset/
 ```
-- This script reads the previous stored `Control.txt` file and tries to replicate the same trajectory in a scene in which there are no other dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
 ```bash
-bash CARLA/CreateStaticDataset.sh
+bash CARLA/CreateDynamicDatasetTown02.sh
+```
+- These scripts read the previous stored `Control.txt` files and tries to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
+```bash
+bash CARLA/CreateStaticDatasetTown01.sh
+```
+```bash
+bash CARLA/CreateStaticDatasetTown02.sh
 ```
 For better adaptation to real world images, we have used the [Cityscapes dataset](https://www.cityscapes-dataset.com/).
 
-## Setup Training and Test data
+## Setup Training/Validation/Test data
 ### Generating Pairs
 We provide a python script to generate training data in the form of pairs of images {A,B}, where A and B are two different depicitions of the same underlying scene. For example, these might be pairs {label map, photo} or {bw image, color image}. Then we can learn to translate A to B or B to A:
 
@@ -127,22 +133,7 @@ python scripts/combine_A_and_B.py --fold_A /path/to/data/A --fold_B /path/to/dat
 
 This will combine each pair of images (A,B) into a single image file, ready for training.
 
-### Evaluating Labels2Photos on Cityscapes
-We provide scripts for running the evaluation of the Labels2Photos task on the Cityscapes validation set. We assume that you have installed `caffe` (and `pycaffe`) in your system. If not, see the [official website](http://caffe.berkeleyvision.org/installation.html) for installation instructions. Once `caffe` is successfully installed, download the pre-trained FCN-8s semantic segmentation model (512MB) by running
-```bash
-bash ./scripts/eval_cityscapes/download_fcn8s.sh
-```
-Then make sure `./scripts/eval_cityscapes/` is in your system's python path. If not, run the following command to add it
-```bash
-export PYTHONPATH=${PYTHONPATH}:./scripts/eval_cityscapes/
-```
-Now you can run the following command to evaluate your predictions:
-```bash
-python ./scripts/eval_cityscapes/evaluate.py --cityscapes_dir /path/to/original/cityscapes/dataset/ --result_dir /path/to/your/predictions/ --output_dir /path/to/output/directory/
-```
-By default, images in your prediction result directory have the same naming convention as the Cityscapes dataset (e.g. `frankfurt_000001_038418_leftImg8bit.png`). The script will output a txt file under `--output_dir` containing the metric.
-
-**Further notes**: The pre-trained model does not work well on Cityscapes in the original resolution (1024x2048) as it was trained on 256x256 images that are resized to 1024x2048. The purpose of the resizing was to 1) keep the label maps in the original high resolution untouched and 2) avoid the need of changing the standard FCN training code for Cityscapes. To get the *ground-truth* numbers in the paper, you need to resize the original Cityscapes images to 256x256 before running the evaluation code.
+**Further notes**: 
 
 ## Display UI
 Optionally, for displaying images during training and test, use the [display package](https://github.com/szym/display).
