@@ -250,7 +250,6 @@ if opt.DATA_ROOT ~= '' then
 			print('Displayed images')
 		end
 		
-		filepaths = TableConcat(filepaths, filepaths_curr)
 	end
 
 	-- make webpage
