@@ -1,0 +1,3 @@
+- mGAN is the one in the paper EmptyCities
+- mGAN_DA is the same as mGAN but with data augmentation
+- mGAN_simple is the one in which the input is the RGB concatenated with the mask for the discriminator
