@@ -1,4 +1,4 @@
 theme: jekyll-theme-cayman
 show_downloads: true
 description: "Image Inpainting for a Dynamic Objects Invariant Space <br> Berta Bescos, Jose Neira, Roland Siegwart, Cesar Cadena"
-logo: #/imgs/DynamicObjectsInvariantSpace.png
+logo: /imgs/DynamicObjectsInvariantSpace.png
