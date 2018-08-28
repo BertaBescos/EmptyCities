@@ -10,8 +10,8 @@ In this paper we present an end-to-end deep learning framework to turn images th
 The second challenge is approached with a conditional generative adversarial model that, taking as input the original dynamic image and the computed dynamic/static binary mask, is capable of generating the final static image. The former challenge is addressed by the use of a convolutional network that learns a multi-class semantic segmentation of the image. The objective of this network is producing an accurate segmentation and helping the previous generative model to output a realistic static image. These generated images can be used for applications such as virtual reality or vision-based robot localization purposes. To validate our approach, we show both qualitative and quantitative comparisons with other methods by removing the dynamic objects and hallucinating (inpainting) the static structure behind them. </div>
 
 ## Try Our Code
-- [x] Torch implementation [here](https://github.com/BertaBescos/EmptyCities).  
-- [ ] We are currently working on a PyTorch implementation.
+[x] Torch implementation [here](https://github.com/BertaBescos/EmptyCities).  
+[ ] We are currently working on a PyTorch implementation.
 
 ## Paper
 
