@@ -1,5 +1,3 @@
-Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static, for example:
-
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
 Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space  
