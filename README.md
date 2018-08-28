@@ -11,7 +11,7 @@ The second challenge is approached with a conditional generative adversarial mod
 
 ## Try Our Code
 - Torch implementation [here](https://github.com/BertaBescos/EmptyCities).  
-- We are currently working on a PyTorch implementation.
+- We are currently working on a PyTorch implementation :+1:.
 
 ## Paper
 
@@ -20,8 +20,6 @@ The second challenge is approached with a conditional generative adversarial mod
 
 
 ## Datasets
-<div class="align-justify">
 In our GitHub page we have some scripts available to generate the dataset with [CARLA](http://carla.org/). Also, you can download a small dataset from [here](https://drive.google.com/open?id=1XkgElMx4kgyhSNWgoarhBvKKDLuYkJ2o). Note that this dataset is valid for testing, but it contains very few images for training.
-</div>
 
 ## Acknowledgments
