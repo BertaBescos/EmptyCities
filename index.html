@@ -21,7 +21,7 @@
 
 <!-- Header -->
 <header class="w3-display-container w3-content w3-wide" style="max-width:1500px;" id="home">
-  <img class="w3-image" src="DynamicObjectsInvariantSpace.png" alt="Architecture" width="1500" height="800">
+  <img class="w3-image" src="DynamicObjectsInvariantSpace.png" alt="Teaser Image" width="1500" height="800">
   <div class="w3-display-middle w3-margin-top w3-center">
     <h1 class="w3-xxlarge w3-text-white"><span class="w3-padding w3-black w3-opacity-min"><b>Empty</b></span> <span class="w3-hide-small w3-text-light-grey">Cities</span></h1>
   </div>
@@ -30,9 +30,21 @@
 <!-- Page content -->
 <div class="w3-content w3-padding" style="max-width:1564px">
 
-  <!-- Project Section -->
-  <div class="w3-container w3-padding-32" id="projects">
+  <!-- Abstract Section -->
+  <div class="w3-container w3-padding-32" id="abstract">
     <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Abstract</h3>
+    <p>In this paper we present an end-to-end deep learning framework to turn images that show dynamic content, such as 
+      vehicles or pedestrians, into realistic static frames. This objective encounters two main challenges: detecting the 
+      dynamic objects, and inpainting the static occluded background. 
+      The second challenge is approached with a conditional generative adversarial model that, taking as input the original 
+      dynamic image and the computed dynamic/static binary mask, is capable of generating the final static image. The former 
+      challenge is addressed by the use of a convolutional network that learns a multi-class semantic segmentation of the 
+      image. The objective of this network is producing an accurate segmentation and helping the previous generative model 
+      to output a realistic static image. These generated images can be used for applications such as virtual reality or 
+      vision-based robot localization purposes. To validate our approach, we show both qualitative and quantitative 
+      comparisons with other methods by removing the dynamic objects and hallucinating (inpainting) the static structure 
+      behind them.
+    </p>
   </div>
 
   <div class="w3-row-padding">
@@ -88,46 +100,7 @@
       </div>
     </div>
   </div>
-
-  <!-- About Section -->
-  <div class="w3-container w3-padding-32" id="abstract">
-    <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">About</h3>
-    <p>In this paper we present an end-to-end deep learning framework to turn images that show dynamic content, such as vehicles or pedestrians, into realistic static frames. This objective encounters two main challenges: detecting the dynamic objects, and inpainting the static occluded background. 
-The second challenge is approached with a conditional generative adversarial model that, taking as input the original dynamic image and the computed dynamic/static binary mask, is capable of generating the final static image. The former challenge is addressed by the use of a convolutional network that learns a multi-class semantic segmentation of the image. The objective of this network is producing an accurate segmentation and helping the previous generative model to output a realistic static image. These generated images can be used for applications such as virtual reality or vision-based robot localization purposes. To validate our approach, we show both qualitative and quantitative comparisons with other methods by removing the dynamic objects and hallucinating (inpainting) the static structure behind them.
-    </p>
-  </div>
-
-  <div class="w3-row-padding w3-grayscale">
-    <div class="w3-col l3 m6 w3-margin-bottom">
-      <img src="/w3images/team2.jpg" alt="John" style="width:100%">
-      <h3>John Doe</h3>
-      <p class="w3-opacity">CEO & Founder</p>
-      <p>Phasellus eget enim eu lectus faucibus vestibulum. Suspendisse sodales pellentesque elementum.</p>
-      <p><button class="w3-button w3-light-grey w3-block">Contact</button></p>
-    </div>
-    <div class="w3-col l3 m6 w3-margin-bottom">
-      <img src="/w3images/team1.jpg" alt="Jane" style="width:100%">
-      <h3>Jane Doe</h3>
-      <p class="w3-opacity">Architect</p>
-      <p>Phasellus eget enim eu lectus faucibus vestibulum. Suspendisse sodales pellentesque elementum.</p>
-      <p><button class="w3-button w3-light-grey w3-block">Contact</button></p>
-    </div>
-    <div class="w3-col l3 m6 w3-margin-bottom">
-      <img src="/w3images/team3.jpg" alt="Mike" style="width:100%">
-      <h3>Mike Ross</h3>
-      <p class="w3-opacity">Architect</p>
-      <p>Phasellus eget enim eu lectus faucibus vestibulum. Suspendisse sodales pellentesque elementum.</p>
-      <p><button class="w3-button w3-light-grey w3-block">Contact</button></p>
-    </div>
-    <div class="w3-col l3 m6 w3-margin-bottom">
-      <img src="/w3images/team4.jpg" alt="Dan" style="width:100%">
-      <h3>Dan Star</h3>
-      <p class="w3-opacity">Architect</p>
-      <p>Phasellus eget enim eu lectus faucibus vestibulum. Suspendisse sodales pellentesque elementum.</p>
-      <p><button class="w3-button w3-light-grey w3-block">Contact</button></p>
-    </div>
-  </div>
-
+ 
   <!-- Contact Section -->
   <div class="w3-container w3-padding-32" id="contact">
     <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">Contact</h3>
