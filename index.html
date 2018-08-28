@@ -12,9 +12,9 @@
     <a href="#home" class="w3-bar-item w3-button"><b>BR</b> Architects</a>
     <!-- Float links to the right. Hide them on small screens -->
     <div class="w3-right w3-hide-small">
-      <a href="#projects" class="w3-bar-item w3-button">Projects</a>
       <a href="#abstract" class="w3-bar-item w3-button">Abstract</a>
-      <a href="#contact" class="w3-bar-item w3-button">Contact</a>
+      <a href="#paper" class="w3-bar-item w3-button">Paper</a>
+      <a href="#video" class="w3-bar-item w3-button">Video</a>
     </div>
   </div>
 </div>
@@ -90,11 +90,10 @@
   </div>
 
   <!-- About Section -->
-  <div class="w3-container w3-padding-32" id="about">
+  <div class="w3-container w3-padding-32" id="abstract">
     <h3 class="w3-border-bottom w3-border-light-grey w3-padding-16">About</h3>
-    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Excepteur sint
-      occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco
-      laboris nisi ut aliquip ex ea commodo consequat.
+    <p>In this paper we present an end-to-end deep learning framework to turn images that show dynamic content, such as vehicles or pedestrians, into realistic static frames. This objective encounters two main challenges: detecting the dynamic objects, and inpainting the static occluded background. 
+The second challenge is approached with a conditional generative adversarial model that, taking as input the original dynamic image and the computed dynamic/static binary mask, is capable of generating the final static image. The former challenge is addressed by the use of a convolutional network that learns a multi-class semantic segmentation of the image. The objective of this network is producing an accurate segmentation and helping the previous generative model to output a realistic static image. These generated images can be used for applications such as virtual reality or vision-based robot localization purposes. To validate our approach, we show both qualitative and quantitative comparisons with other methods by removing the dynamic objects and hallucinating (inpainting) the static structure behind them.
     </p>
   </div>
 
