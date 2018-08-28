@@ -1,8 +1,3 @@
-# EmptyCities
-Berta Bescos, [Jose Neira](http://webdiis.unizar.es/~neira/), Roland Siegwart, [Cesar Cadena](http://n.ethz.ch/~cesarc/)
-
-[[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]]()
-
 Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static, for example:
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
