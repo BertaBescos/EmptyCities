@@ -160,7 +160,6 @@ local function loadImage(path,bin)
 	return im
 end
 
-
 local filepaths = {} -- paths to images tested on
 
 if opt.DATA_ROOT ~= '' then
