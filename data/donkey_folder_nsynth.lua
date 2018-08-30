@@ -36,7 +36,7 @@ local trainCache = paths.concat(cache, cache_prefix .. '_trainCache.t7')
 --------------------------------------------------------------------------------------------
 local input_nc = opt.input_nc -- input channels
 local output_nc = opt.output_nc
-local mask_nc = opt.input_mask_nc
+local mask_nc = opt.mask_nc
 local loadSize   = {input_nc, opt.loadSize}
 local sampleSize = {input_nc, opt.fineSize}
 
