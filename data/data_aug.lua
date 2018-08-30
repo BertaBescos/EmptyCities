@@ -2,7 +2,7 @@
 require 'image'
 require 'torch'
 
-print('Loading data augmentation paramaters...')
+print('Loading data augmentation parameters...')
 
 data_aug = {}
 
