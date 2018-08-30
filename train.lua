@@ -24,11 +24,11 @@ opt = {
 	ndf = 64,               -- #  of discrim filters in first conv layer
 	input_nc = 3,           -- #  of input image channels
 	output_nc = 3,          -- #  of output image channels
-	input_mask_nc = 1,	   -- #  of input mask channels --bbescos
-	input_gan_nc = 1,			-- #  of input image channels to the pix2pix architecture
-	output_gan_nc = 1,	   -- #  of output image channels from the pix2pix architecture
+	mask_nc = 1,			-- #  of mask channels
+	input_gan_nc = 1,		-- #  of input image channels to the GAN architecture
+	output_gan_nc = 1,		-- #  of output image channels from the GAN architecture
 	mGAN = 1,		   		-- Penalize Dicriminator more on mask
-	gamma = 2,					-- Penalize Dicriminator two more times on mask
+	gamma = 2,				-- Penalize Dicriminator two more times on mask
 	niter = 200,            -- #  of iter at starting learning rate
 	lr = 0.0002,            -- initial learning rate for adam
 	beta1 = 0.5,            -- momentum term of adam
@@ -38,33 +38,31 @@ opt = {
 	pNonSynth = 0.5,	   	-- train with real and synthetic data with this proportion
 	display = 1,            -- display samples while training. 0 = false
 	display_id = 10,        -- display window id.
-	display_plot = 'errL1', 	-- which loss values to plot over time. Accepted values include a comma seperated list of: errL1, errG, and errD
+	display_plot = 'errL1', -- which loss values to plot over time. Accepted values include a comma seperated list of: errL1, errG, and errD
 	val_display_plot = 'val_errL1',
-	gpu = 1,                -- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
-	name = 'mGAN',           -- name of the experiment, should generally be passed on the command line
-	phase = 'train',             	-- train, val, test, nsynth, etc
-	preprocess = 'regular',      	-- for special purpose preprocessing, e.g., for colorization, change this (selects preprocessing functions in util.lua)
-	nThreads = 2,                	-- # threads for loading data
+	gpu = 1,				-- gpu = 0 is CPU mode. gpu=X is GPU mode on GPU X
+	name = 'mGAN',			-- name of the experiment, should generally be passed on the command line
+	phase = 'train',		-- train, val, test, nsynth, etc
+	nThreads = 2,			-- # threads for loading data
 	val_freq = 5000,		-- see validation output every val_freq iteration
-	save_epoch_freq = 50,        	-- save a model every save_epoch_freq epochs (does not overwrite previously saved models)
-	save_latest_freq = 5000,     	-- save the latest model every latest_freq sgd iterations (overwrites the previous latest model)
-	print_freq = 50,             	-- print the debug information every print_freq iterations
-	display_freq = 100,          	-- display the current results every display_freq iterations
-	save_display_freq = 10000,    -- save the current display of results every save_display_freq_iterations
-	continue_train=0,            	-- if continue training, load the latest model: 1: true, 0: false
-	epoch_ini = 1,		-- if continue training, at what epoch we start
-	serial_batches = 0,          	-- if 1, takes images in order to make batches, otherwise takes them randomly
-	serial_batch_iter = 1,       	-- iter into serial image list
-	checkpoints_dir = './checkpoints', 	-- models are saved here
-	cudnn = 1,                         	-- set to 0 to not use cudnn
+	save_epoch_freq = 25,	-- save a model every save_epoch_freq epochs (does not overwrite previously saved models)
+	save_latest_freq = 5000,	-- save the latest model every latest_freq sgd iterations (overwrites the previous latest model)
+	print_freq = 50,            -- print the debug information every print_freq iterations
+	display_freq = 100,         -- display the current results every display_freq iterations
+	save_display_freq = 10000,	-- save the current display of results every save_display_freq_iterations
+	continue_train=0,			-- if continue training, load the latest model: 1: true, 0: false
+	epoch_ini = 1,				-- if continue training, at what epoch we start
+	serial_batches = 0,			-- if 1, takes images in order to make batches, otherwise takes them randomly
+	serial_batch_iter = 1,		-- iter into serial image list
+	checkpoints_dir = './checkpoints',	-- models are saved here
+	cudnn = 1,							-- set to 0 to not use cudnn
 	condition_GAN = 1,                 	-- set to 0 to use unconditional discriminator
-	use_GAN = 1,                       	-- set to 0 to turn off GAN term
-	use_L1 = 1,                   		-- set to 0 to turn off L1 term
-	which_model_netD = 'basic', 	-- selects model to use for netD
-	which_model_netG = 'unet',  	-- selects model to use for netG
-	n_layers_D = 0,             	-- only used if which_model_netD=='n_layers'
-	lambda = 100,               	-- weight on L1 term in objective
-	lambdaSS = 1,		       		-- weight on SS term in objective
+	condition_mGAN = 1,					-- set to 0 to use unconditional discriminator on mask
+	which_model_netD = 'basic',			-- selects model to use for netD
+	which_model_netG = 'unet',			-- selects model to use for netG
+	n_layers_D = 0,						-- only used if which_model_netD=='n_layers'
+	lambda = 100,						-- weight on L1 term in objective
+	lambdaSS = 1,						-- weight on SS term in objective
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -80,7 +78,7 @@ end
 
 local input_nc = opt.input_nc
 local output_nc = opt.output_nc
-local input_mask_nc = opt.input_mask_nc --bbescos
+local mask_nc = opt.mask_nc --bbescos
 local mGAN = opt.mGAN
 local input_gan_nc = opt.input_gan_nc
 local output_gan_nc = opt.output_gan_nc
@@ -92,7 +90,7 @@ local idx_C = nil
 
 idx_A = {1, input_nc}
 idx_B = {input_nc + 1, input_nc + output_nc}
-idx_C = {input_nc + output_nc + 1, input_nc + output_nc + input_mask_nc}
+idx_C = {input_nc + output_nc + 1, input_nc + output_nc + mask_nc}
 
 if opt.display == 0 then opt.display = false end
 
@@ -201,7 +199,7 @@ if opt.continue_train == 1 then
 	end
 else
 	print('define model netG...')
-	netG = defineG(input_gan_nc + input_mask_nc, output_gan_nc, ngf)
+	netG = defineG(input_gan_nc + mask_nc, output_gan_nc, ngf)
 	print('define model netD...')
 	netD = defineD(input_gan_nc, output_gan_nc, ndf)
 	if opt.NSYNTH_DATA_ROOT ~= '' then
@@ -277,8 +275,8 @@ local realRGB_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSi
 local val_realRGB_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
 local realRGB_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local val_realRGB_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
-local real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
-local val_real_C = torch.Tensor(opt.batchSize, input_mask_nc, opt.fineSize, opt.fineSize) --bbescos
+local real_C = torch.Tensor(opt.batchSize, mask_nc, opt.fineSize, opt.fineSize) --bbescos
+local val_real_C = torch.Tensor(opt.batchSize, mask_nc, opt.fineSize, opt.fineSize) --bbescos
 local fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local val_fake_B = torch.Tensor(opt.batchSize, output_nc, opt.fineSize, opt.fineSize)
 local real_AB = torch.Tensor(opt.batchSize, output_nc + input_nc*opt.condition_GAN, opt.fineSize, opt.fineSize)
@@ -562,41 +560,33 @@ local fGx = function(x)
 	end
 	 
 	if synth_label == 1 then
-		if opt.use_GAN==1 then
-			output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-			local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-			if opt.gpu>0 then 
-				label = label:cuda();
-			end
-			if mGAN == 1 then
-				output_mGAN = mGAN_D.output
-				errG = criterion:forward(output_mGAN, label)
-				local df_do = criterion:backward(output_mGAN, label)
-				local df_dx = mGAN_D:updateGradInput(output, df_do)
-				df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
-			else
-				errG = criterion:forward(output, label)
-				local df_do = criterion:backward(output, label)
-				df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_nc+1, output_nc)
-			end	   
-		else
-			errG = 0
+		output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
+		local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+		if opt.gpu>0 then 
+			label = label:cuda();
 		end
-	else
-		if opt.use_GAN==1 then
-			output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-			local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-			if opt.gpu>0 then 
-				label = label:cuda();
-			end
-			local outputReal = netReal.output
-			errG = criterion:forward(outputReal, label)
-			local df_do = criterion:backward(outputReal, label)
-			local df_dx = netReal:updateGradInput(output, df_do)
+		if mGAN == 1 then
+			output_mGAN = mGAN_D.output
+			errG = criterion:forward(output_mGAN, label)
+			local df_do = criterion:backward(output_mGAN, label)
+			local df_dx = mGAN_D:updateGradInput(output, df_do)
 			df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
 		else
-			errG = 0
+			errG = criterion:forward(output, label)
+			local df_do = criterion:backward(output, label)
+			df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_nc+1, output_nc)
+		end	   
+	else
+		output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
+		local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+		if opt.gpu>0 then 
+			label = label:cuda();
 		end
+		local outputReal = netReal.output
+		errG = criterion:forward(outputReal, label)
+		local df_do = criterion:backward(outputReal, label)
+		local df_dx = netReal:updateGradInput(output, df_do)
+		df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
 	end
 	 
 	-- unary loss
@@ -606,32 +596,24 @@ local fGx = function(x)
 	end
 
 	if synth_label == 1 then
-		if opt.use_L1==1 then
-			errL1 = criterionAE:forward(fake_B, realGray_B)
-			df_dg_AE = criterionAE:backward(fake_B, realGray_B)
-		else
-			errL1 = 0
-		end
+		errL1 = criterionAE:forward(fake_B, realGray_B)
+		df_dg_AE = criterionAE:backward(fake_B, realGray_B)
 	else   
-		if opt.use_L1==1 then
-			local m = real_C:clone():float()
-			local layer1 = nn.CMul(m:size())
-			layer1.weight = m:clone():mul(-1):add(1)
-			local layer2 = nn.CAdd(m:size())
-			layer2.bias = realGray_A:clone():float():cmul(m)
-			if opt.gpu > 0 then
-				layer1 = layer1:cuda()
-				layer2 = layer2:cuda()
-			end
-			local netReal = nn.Sequential()
-			netReal:add(layer1):add(layer2)
-			local fake_B2 = netReal:forward(fake_B)
-			errL1 = criterionAE:forward(fake_B2, realGray_B)
-			local df_do_AE = criterionAE:backward(fake_B2, realGray_B)
-			df_dg_AE = netReal:updateGradInput(fake_B, df_do_AE)
-		else
-			errL1 = 0
+		local m = real_C:clone():float()
+		local layer1 = nn.CMul(m:size())
+		layer1.weight = m:clone():mul(-1):add(1)
+		local layer2 = nn.CAdd(m:size())
+		layer2.bias = realGray_A:clone():float():cmul(m)
+		if opt.gpu > 0 then
+			layer1 = layer1:cuda()
+			layer2 = layer2:cuda()
 		end
+		local netReal = nn.Sequential()
+		netReal:add(layer1):add(layer2)
+		local fake_B2 = netReal:forward(fake_B)
+		errL1 = criterionAE:forward(fake_B2, realGray_B)
+		local df_do_AE = criterionAE:backward(fake_B2, realGray_B)
+		df_dg_AE = netReal:updateGradInput(fake_B, df_do_AE)
 	end
 	
 	netG:backward(realGray_A, df_dg + df_dg_AE:mul(opt.lambda))   
@@ -741,7 +723,7 @@ for epoch = 1, opt.niter do
 		createRealFake()
 
 		-- (1) Update D network: maximize log(D(x,y)) + log(1 - D(x,G(x)))
-		if opt.use_GAN==1 then optim.adam(fDx, parametersD, optimStateD) end
+		optim.adam(fDx, parametersD, optimStateD)
 
 		-- (2) Update G network: maximize log(D(x,G(x))) + L1(y,G(x))
 		optim.adam(fGx, parametersG, optimStateG)
