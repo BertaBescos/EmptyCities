@@ -109,7 +109,7 @@ bash scripts/CARLA/CreateDynamicDatasetTown01.sh path/to/my/folder/
 ```bash
 bash scripts/CARLA/CreateDynamicDatasetTown02.sh path/to/my/folder/
 ```
-- These scripts read the previous stored `Control.txt` files and tries to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
+- These scripts read the previous stored `Control.txt` files and try to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
 ```bash
 bash scripts/CARLA/CreateStaticDatasetTown01.sh path/to/my/folder/
 ```
