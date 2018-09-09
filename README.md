@@ -155,8 +155,8 @@ If you use this code for your research, please cite our paper Empty Cities: Imag
 @article{emptycities2018,
   title={Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space},
   author={Bescos, Berta and Neira, José and Siegwart, Roland and Cadena, Cesar},
-  journal={CoRL},
-  year={2019}
+  journal={arXiv},
+  year={2018}
 }
 ```
 
