@@ -29,6 +29,7 @@ opt = {
 	name = 'mGAN',              -- name of experiment, selects which model to run, should generally should be passed on command line
 	input_nc = 3,               -- #  of input image channels
 	output_nc = 3,              -- #  of output image channels
+	mask_nc = 1,				-- #  of mask channels
 	serial_batches = 1,         -- if 1, takes images in order to make batches, otherwise takes them randomly
 	serial_batch_iter = 1,      -- iter into serial image list
 	cudnn = 1,                  -- set to 0 to not use cudnn (untested)
@@ -73,12 +74,12 @@ idx_A = {1, input_nc}
 
 ----------------------------------------------------------------------------
 
-local inputRGB = torch.FloatTensor(opt.batchSize,3,opt.fineSize,opt.fineSize)
+local inputRGB = torch.FloatTensor(opt.batchSize, opt.input_nc, opt.fineSize, opt.fineSize)
 if opt.target ~= '' then
-	targetRGB = torch.FloatTensor(opt.batchSize,3,opt.fineSize,opt.fineSize)
+	targetRGB = torch.FloatTensor(opt.batchSize, opt.output_nc, opt.fineSize, opt.fineSize)
 end
 if opt.mask ~= '' then
-	inputMask = torch.FloatTensor(opt.batchSize,1,opt.fineSize,opt.fineSize)
+	inputMask = torch.FloatTensor(opt.batchSize, opt.mask_nc, opt.fineSize, opt.fineSize)
 end
 
 -- load all models
