@@ -465,24 +465,41 @@ local fDx = function(x)
 		label = label:cuda()
 	end
 
-	if synth_label == 1 then
-		errD_real = criterion:forward(output, label)
-		local df_do = criterion:backward(output, label) -- 1x1x30x30  
-		netD:backward(real_ABC, df_do)
-	else
+	if synth_label == 0 then
+		local m = fake_C:float():resize(fake_C:size(3), fake_C:size(4))
+		m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+		m[m:gt(0)] = 1
+		m:resize(1, 1, m:size(1), m:size(2))
+		local layer1 = nn.CMul(output:size())
+		local layer2 = nn.CAdd(output:size())
+		layer1.weight = m:clone():mul(-1):add(1)
+		layer2.bias = m:clone()
+		if opt.gpu > 0 then
+			layer1 = layer1:cuda()
+			layer2 = layer2:cuda()
+		end
+		nsynthD_Real = nn.Sequential()
+		nsynthD_Real:add(layer1):add(layer2)
+		output = nsynthD_Real:forward(output)
 	end
+
+	errD_real = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label) -- 1x1x30x30  
+	netD:backward(real_ABC, df_do)
 	 
 	-- Fake
 	local output = netD:forward(fake_ABC) -- Subir el valor de la zona de la mascara
 	label:fill(fake_label)
 
-	if synth_label == 1 then
-		errD_fake = criterion:forward(output, label)
-		local df_do = criterion:backward(output, label) -- 1x1x30x30  
-		netD:backward(fake_ABC, df_do)
-	else
-
+	if synth_label == 0 then
+		nsynthD_Fake = nn.Sequential()
+		nsynthD_Fake:add(layer1)
+		output = nsynthD_Fake:forward(output)
 	end
+
+	errD_fake = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label) -- 1x1x30x30  
+	netD:backward(fake_ABC, df_do)
 		
 	errD = (errD_real + errD_fake)/2
 	return errD, gradParametersD
@@ -503,16 +520,18 @@ local fGx = function(x)
 	 
 	if synth_label == 1 then
 		output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-		local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-		if opt.gpu>0 then 
-			label = label:cuda();
-		end
-		errG = criterion:forward(output, label)
-		local df_do = criterion:backward(output, label)
-		df_dg = netD:updateGradInput(fake_ABC, df_do):narrow(2, fake_ABC:size(2) 
-			- opt.condition_GAN*output_gan_nc - opt.condition_mGAN*mask_nc + 1, output_gan_nc)	   
 	else
+		output = nsynthD_Fake.output
 	end
+
+	local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+	if opt.gpu>0 then 
+		label = label:cuda();
+	end
+	errG = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label)
+	df_dg = netD:updateGradInput(fake_ABC, df_do):narrow(2, fake_ABC:size(2) 
+		- opt.condition_GAN*output_gan_nc - opt.condition_mGAN*mask_nc + 1, output_gan_nc)	   
 	 
 	-- unary loss
 	local df_dg_AE = torch.zeros(fake_B:size())
@@ -520,12 +539,23 @@ local fGx = function(x)
 		df_dg_AE = df_dg_AE:cuda();
 	end
 
-	if synth_label == 1 then
-		errL1 = criterionAE:forward(fake_B, realGray_B)
-		df_dg_AE = criterionAE:backward(fake_B, realGray_B)
-	else   
+	if synth_label == 0 then
+		local m = fake_C:clone():float():add(1):mul(0.5)
+		local layer1 = nn.CMul(m:size())
+		layer1.weight = m:clone():mul(-1):add(1)
+		local layer2 = nn.CAdd(m:size())
+		layer2.bias = realGray_A:clone():float():cmul(m)
+		if opt.gpu > 0 then
+			layer1 = layer1:cuda()
+			layer2 = layer2:cuda()
+		end
+		local nsynthG = nn.Sequential()
+		nsynthG:add(layer1):add(layer2)
+		fake_B = nsynthG:forward(fake_B)
 	end
-	
+
+	errL1 = criterionAE:forward(fake_B, realGray_B)
+	df_dg_AE = criterionAE:backward(fake_B, realGray_B)
 	netG:backward(real_AC, df_dg + df_dg_AE:mul(opt.lambda))   
 
 	return errG, gradParametersG
