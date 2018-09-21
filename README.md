@@ -8,8 +8,7 @@ Torch implementation for learning a mapping from input images that contain dynam
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
 Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space  
-[Berta Bescos], [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart], [Cesar Cadena](http://n.ethz.ch/~cesarc/)  
-CoRL, 2018.
+[Berta Bescos](https://bertabescos.github.io/), [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart], [Cesar Cadena](http://n.ethz.ch/~cesarc/)  
 
 ## Setup
 
@@ -109,7 +108,7 @@ bash scripts/CARLA/CreateDynamicDatasetTown01.sh path/to/my/folder/
 ```bash
 bash scripts/CARLA/CreateDynamicDatasetTown02.sh path/to/my/folder/
 ```
-- These scripts read the previous stored `Control.txt` files and tries to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
+- These scripts read the previous stored `Control.txt` files and try to replicate the same trajectories in the same scenarios with no dynamic objects. The followed trajectory and the one in `Trajectory.txt` are compared to check that the vehicle position is kept the same.
 ```bash
 bash scripts/CARLA/CreateStaticDatasetTown01.sh path/to/my/folder/
 ```
@@ -156,8 +155,8 @@ If you use this code for your research, please cite our paper Empty Cities: Imag
 @article{emptycities2018,
   title={Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space},
   author={Bescos, Berta and Neira, José and Siegwart, Roland and Cadena, Cesar},
-  journal={CoRL},
-  year={2019}
+  journal={arXiv},
+  year={2018}
 }
 ```
 
