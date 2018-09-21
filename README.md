@@ -31,9 +31,7 @@ cd EmptyCities
 
 ### Models
 Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
-- `mGAN`: trained only on synthetic data coming from [CARLA](http://carla.org/).
-- `mGAN_DA`: trained on synthetic data coming from CARLA with data augmentation.
-- `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
+- `mGAN`: generative inpainted model.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
 
 ## Inference
