@@ -31,7 +31,7 @@ cd EmptyCities
 
 ### Models
 Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
-- `mGAN`: generative inpainted model.
+- `mGAN`: generative inpainting model.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
 
 ## Inference
@@ -44,6 +44,7 @@ We provide some images in `/imgs/test` you can run our model on. For example:
 ```bash
 input=imgs/test/0.png qlua test.lua
 ```
+These images are from the [Cityscapes](https://www.cityscapes-dataset.com/) and the [SVS](https://svsdataset.github.io/) datasets.
 - You can also store the inpainted result and the binary mask that has been used.
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
