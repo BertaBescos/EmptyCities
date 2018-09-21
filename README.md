@@ -42,21 +42,21 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 ```bash
 input=/path/to/input/image/ qlua test.lua
 ```
-We provide some images in `/imgs` you can run our model on. For example:
+We provide some images in `/imgs/test` you can run our model on. For example:
 ```bash
-input=imgs/input.png qlua test.lua
+input=imgs/test/0.png qlua test.lua
 ```
 - You can also store the inpainted result and the binary mask that has been used.
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
 ```
-In the following example the binary mask is stored in `/examples/output_mask.png`:
+In the following example the binary mask is stored in `/imgs/test/0_output_mask.png`:
 ```bash
-input=imgs/input.png output=imgs/output.png th test.lua
+input=imgs/test/0.png output=imgs/test/0_output.png th test.lua
 ```
 - If the stored mask is not accurate enough, you can provide yourself a better one:
 ```bash
-input=imgs/input.png mask=imgs/mask.png output=imgs/output.png th test.lua
+input=imgs/test/0.png mask=imgs/test/0_mask.png output=imgs/test/0_output.png th test.lua
 ```
 
 ## Test
@@ -64,6 +64,10 @@ input=imgs/input.png mask=imgs/mask.png output=imgs/output.png th test.lua
 - If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `test` and keep the results in `./results/mGAN`. Images within the folder `test` should be RGB images of any size.
 ```bash
 DATA_ROOT=/path/to/data/ th test.lua
+```
+For example:
+```bash
+DATA_ROOT=/imgs/ th test.lua
 ```
 - If you prefer to feed the dynamic/static binary masks, you should concatenate it to the RGB image. We provide a python script for this.
 ```bash
