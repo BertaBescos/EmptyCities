@@ -24,7 +24,7 @@ opt.data = paths.concat(os.getenv('NSYNTH_DATA_ROOT'), opt.phase)
 paths.dofile('data_aug.lua')
 
 if not paths.dirp(opt.data) then
-		error('Did not find directory: ' .. opt.data)
+	error('Did not find directory: ' .. opt.data)
 end
 
 -- a cache file of the training metadata (if doesnt exist, will be created)
@@ -36,7 +36,7 @@ local trainCache = paths.concat(cache, cache_prefix .. '_trainCache.t7')
 --------------------------------------------------------------------------------------------
 local input_nc = opt.input_nc -- input channels
 local output_nc = opt.output_nc
-local mask_nc = opt.input_mask_nc
+local mask_nc = opt.mask_nc
 local loadSize   = {input_nc, opt.loadSize}
 local sampleSize = {input_nc, opt.fineSize}
 
