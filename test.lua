@@ -183,8 +183,8 @@ if opt.DATA_ROOT ~= '' then
 		if opt.mask == '' then
 			inputBGR = inputRGB:clone()
 			inputBGR = inputBGR:add(1):mul(0.5)
-			inputBGR[1][1] = inputRGB[1][3]:add(1):mul(0.5)
-			inputBGR[1][3] = inputRGB[1][1]:add(1):mul(0.5)
+			inputBGR[1][1] = inputRGB[1][3]:clone():add(1):mul(0.5)
+			inputBGR[1][3] = inputRGB[1][1]:clone():add(1):mul(0.5)
 			inputMask = netSS:forward(inputBGR)
 			inputMask = netDynSS:forward(inputMask)
 		else
@@ -285,8 +285,8 @@ else
 	else
 		local inputBGR = inputRGB:clone()
 		inputBGR = inputBGR:add(1):mul(0.5)
-		inputBGR[1][1] = inputRGB[1][3]:add(1):mul(0.5)
-		inputBGR[1][3] = inputRGB[1][1]:add(1):mul(0.5)
+		inputBGR[1][1] = inputRGB[1][3]:clone():add(1):mul(0.5)
+		inputBGR[1][3] = inputRGB[1][1]:clone():add(1):mul(0.5)
 		inputMask = netSS:forward(inputBGR)
 		inputMask = netDynSS:forward(inputMask)
 	end
