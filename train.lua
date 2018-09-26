@@ -177,9 +177,7 @@ function defineD(input_nc, output_nc, ndf)
 	return netD
 end
 
--- load saved models and finetune
-
-	
+-- load saved models
 if opt.continue_train == 1 then
 	print('loading previously trained netG...')
 	netG = util.load(paths.concat(opt.checkpoints_dir, opt.name, 'latest_net_G.t7'), opt)
@@ -269,6 +267,7 @@ if opt.NSYTNH_DATA_ROOT ~= '' then
 		beta1 = opt.beta1,
 	}
 end
+
 ----------------------------------------------------------------------------
 
 local realRGB_A = torch.Tensor(opt.batchSize, input_nc, opt.fineSize, opt.fineSize)
@@ -339,8 +338,8 @@ function createRealFake()
 	-- crete mask
 	if synth_label == 0 then
 		realBGR_A = realRGB_A:clone():add(1):mul(0.5)
-		realBGR_A[1][1] = realRGB_A[1][3]:add(1):mul(0.5)
-		realBGR_A[1][3] = realRGB_A[1][1]:add(1):mul(0.5)
+		realBGR_A[1][1] = realRGB_A[1][3]:clone():add(1):mul(0.5)
+		realBGR_A[1][3] = realRGB_A[1][1]:clone():add(1):mul(0.5)
 		erfnet_C = netSS:forward(realBGR_A) --20 channels
 		fake_C = netDynSS:forward(erfnet_C)
 		_,winner = erfnet_C:squeeze():max(1)
@@ -364,7 +363,8 @@ function createRealFake()
 		real_AB = realGray_B -- unconditional GAN, only penalizes structure in B
 	end   
 
-	fake_B = netG:forward(torch.cat(realGray_A,fake_C,2))
+	real_AC = torch.cat(realGray_A,fake_C,2)
+	fake_B = netG:forward(real_AC)
 	
 	if opt.condition_GAN==1 then
 		fake_AB = torch.cat(realGray_A,fake_B,2)
@@ -415,7 +415,8 @@ function val_createRealFake()
 		val_real_AB = val_realGray_B -- unconditional GAN, only penalizes structure in B
 	end   
 
-	val_fake_B = netG:forward(torch.cat(val_realGray_A,val_fake_C,2))
+	val_real_AC = torch.cat(val_realGray_A,val_fake_C,2)
+	val_fake_B = netG:forward(val_real_AC)
 	
 	if opt.condition_GAN==1 then
 		val_fake_AB = torch.cat(val_realGray_A,val_fake_B,2)
@@ -423,7 +424,6 @@ function val_createRealFake()
 		val_fake_AB = val_fake_B -- unconditional GAN, only penalizes structure in B
 	end
 end
-
 
 ----------------------------------------------------------------------------
 
@@ -441,57 +441,48 @@ local fDx = function(x)
 		label = label:cuda()
 	end
 
+	local m = fake_C:float():resize(fake_C:size(3), fake_C:size(4))
+	m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
+	m[m:gt(0)] = 1
+	m:resize(1, 1, m:size(1), m:size(2))
+	local layer1 = nn.CMul(output:size())
+	local layer2 = nn.CAdd(output:size())
+
 	if synth_label == 1 then
 		if mGAN == 1 then
-			m = real_C:float():resize(real_C:size(3), real_C:size(4))
-			m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
-			m[m:gt(0)] = 1
-			m:resize(1, 1, m:size(1), m:size(2))
-			local layer1 = nn.CMul(output:size())
-			local term_layer1 = m:clone():mul(opt.gamma-1):add(1)
-			layer1.weight = term_layer1
-			local layer2 = nn.CAdd(output:size())
-			local term_layer2 = m:clone():mul(1-opt.gamma)
-			layer2.bias = term_layer2
+			layer1.weight = m:clone():mul(opt.gamma-1):add(1)
+			layer2.bias = m:clone():mul(1-opt.gamma)
 			local layer3 = nn.ReLU()
 			if opt.gpu > 0 then
 				layer1 = layer1:cuda()
 				layer2 = layer2:cuda()
 				layer3 = layer3:cuda()
 			end
-			local mGAN_D = nn.Sequential()
-			mGAN_D:add(layer1):add(layer2):add(layer3)
-			local output_mGAN = mGAN_D:forward(output)
-			errD_real = criterion:forward(output_mGAN, label)
-			local df_do = criterion:backward(output_mGAN, label) -- 1x1x30x30  
-			local df_dg = mGAN_D:updateGradInput(output, df_do)
-			netD:backward(real_AB, df_dg)
-		else
-			errD_real = criterion:forward(output, label)
-			local df_do = criterion:backward(output, label) -- 1x1x30x30  
-			netD:backward(real_AB, df_do)
+			mGAN_Real = nn.Sequential()
+			mGAN_Real:add(layer1):add(layer2):add(layer3)
 		end
 	else
-		m = real_C:float():resize(real_C:size(3), real_C:size(4))
-		m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
-		m[m:gt(0)] = 1
-		m:resize(1, 1, m:size(1), m:size(2))
-		local layer1 = nn.CMul(output:size())
 		layer1.weight = m:clone():mul(-1):add(1)
-		local layer2 = nn.CAdd(output:size())
 		layer2.bias = m:clone()
 		if opt.gpu > 0 then
 			layer1 = layer1:cuda()
 			layer2 = layer2:cuda()
 		end
-		local netReal = nn.Sequential()
-		netReal:add(layer1):add(layer2)
-		local outputReal = netReal:forward(output)
-		errD_real = criterion:forward(outputReal, label)
-		local df_do = criterion:backward(outputReal, label)
-		local df_dg = netReal:updateGradInput(output, df_do)
-		netD:backward(real_AB, df_dg)
-	 end
+		nsynthD_Real = nn.Sequential()
+		nsynthD_Real:add(layer1):add(layer2)
+	end
+
+	if synth_label == 1 then
+		if mGAN == 1 then
+			output = mGAN_Real:forward(output)
+		end
+	else
+		output = nsynthD_Real:forward(output)
+	end
+
+	errD_real = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label) -- 1x1x30x30  
+	netD:backward(real_AB, df_do)
 	 
 	-- Fake
 	local output = netD:forward(fake_AB) -- Subir el valor de la zona de la mascara
@@ -499,48 +490,29 @@ local fDx = function(x)
 
 	if synth_label == 1 then
 		if mGAN == 1 then
-			m = real_C:float():resize(real_C:size(3), real_C:size(4))
-			m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
-			m[m:gt(0)] = 1
-			m:resize(1, 1, m:size(1), m:size(2))
-			local layer1 = nn.CMul(output:size())
-			local term_layer1 = m:clone():mul(opt.gamma-1):add(1)
-			layer1.weight = term_layer1
 			local layer2 = nn.Clamp(0, 1)
 			if opt.gpu > 0 then
-				layer1 = layer1:cuda()
 				layer2 = layer2:cuda()
 			end
-			mGAN_D = nn.Sequential()
-			mGAN_D:add(layer1):add(layer2)
-			local output_mGAN = mGAN_D:forward(output)
-			errD_fake = criterion:forward(output_mGAN, label)
-			local df_do = criterion:backward(output_mGAN, label)
-			local df_dg = mGAN_D:updateGradInput(output, df_do)
-			netD:backward(fake_AB, df_dg)
-		else
-			errD_fake = criterion:forward(output, label)
-			local df_do = criterion:backward(output, label)
-			netD:backward(fake_AB, df_do)
+			mGAN_Fake = nn.Sequential()
+			mGAN_Fake:add(layer1):add(layer2)
 		end
 	else
-		m = real_C:float():resize(real_C:size(3), real_C:size(4))
-		m = image.scale(m, output:size(3), output:size(4)):add(1):mul(0.5)
-		m[m:gt(0)] = 1
-		m:resize(1, 1, m:size(1), m:size(2))
-		local layer1 = nn.CMul(output:size())
-		layer1.weight = m:clone():mul(-1):add(1)
-		if opt.gpu > 0 then
-			layer1 = layer1:cuda()
-		end
-		netReal = nn.Sequential()
-		netReal:add(layer1)
-		local outputReal = netReal:forward(output)
-		errD_fake = criterion:forward(outputReal, label)
-		local df_do = criterion:backward(outputReal, label)
-		local df_dg = netReal:updateGradInput(output, df_do)
-		netD:backward(real_AB, df_dg)
+		nsynthD_Fake = nn.Sequential()
+		nsynthD_Fake:add(layer1)
 	end
+
+	if synth_label == 1 then
+		if mGAN == 1 then
+			output = mGAN_Fake:forward(output)
+		end
+	else
+		output = nsynthD_Fake:forward(output)
+	end
+
+	errD_fake = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label)
+	netD:backward(real_AB, df_do)
 
 	errD = (errD_real + errD_fake)/2
 	return errD, gradParametersD
@@ -558,48 +530,33 @@ local fGx = function(x)
 	if opt.gpu>0 then 
 		df_dg = df_dg:cuda();
 	end
-	 
-	if synth_label == 1 then
-		output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-		local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-		if opt.gpu>0 then 
-			label = label:cuda();
-		end
-		if mGAN == 1 then
-			output_mGAN = mGAN_D.output
-			errG = criterion:forward(output_mGAN, label)
-			local df_do = criterion:backward(output_mGAN, label)
-			local df_dx = mGAN_D:updateGradInput(output, df_do)
-			df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
-		else
-			errG = criterion:forward(output, label)
-			local df_do = criterion:backward(output, label)
-			df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_nc+1, output_nc)
-		end	   
-	else
-		output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
-		local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
-		if opt.gpu>0 then 
-			label = label:cuda();
-		end
-		local outputReal = netReal.output
-		errG = criterion:forward(outputReal, label)
-		local df_do = criterion:backward(outputReal, label)
-		local df_dx = netReal:updateGradInput(output, df_do)
-		df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+
+	output = netD.output --for fake_AB	
+	local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for generator cost
+	if opt.gpu>0 then 
+		label = label:cuda();
 	end
-	 
+
+	if synth_label == 1 then
+		if mGAN == 1 then
+			output = mGAN_Real:forward(output)
+		end  
+	else
+		output = nsynthD_Real:forward(output)
+	end
+
+	errG = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label)
+	df_dg = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+
 	-- unary loss
 	local df_dg_AE = torch.zeros(fake_B:size())
 	if opt.gpu>0 then 
 		df_dg_AE = df_dg_AE:cuda();
 	end
 
-	if synth_label == 1 then
-		errL1 = criterionAE:forward(fake_B, realGray_B)
-		df_dg_AE = criterionAE:backward(fake_B, realGray_B)
-	else   
-		local m = real_C:clone():float()
+	if synth_label == 0 then 
+		local m = fake_C:clone():float():add(1):mul(0.5)
 		local layer1 = nn.CMul(m:size())
 		layer1.weight = m:clone():mul(-1):add(1)
 		local layer2 = nn.CAdd(m:size())
@@ -608,15 +565,14 @@ local fGx = function(x)
 			layer1 = layer1:cuda()
 			layer2 = layer2:cuda()
 		end
-		local netReal = nn.Sequential()
-		netReal:add(layer1):add(layer2)
-		local fake_B2 = netReal:forward(fake_B)
-		errL1 = criterionAE:forward(fake_B2, realGray_B)
-		local df_do_AE = criterionAE:backward(fake_B2, realGray_B)
-		df_dg_AE = netReal:updateGradInput(fake_B, df_do_AE)
+		local nsynthG = nn.Sequential()
+		nsynthG:add(layer1):add(layer2)
+		fake_B = nsynthG:forward(fake_B)
 	end
-	
-	netG:backward(realGray_A, df_dg + df_dg_AE:mul(opt.lambda))   
+
+	errL1 = criterionAE:forward(fake_B, realGray_B)
+	df_dg_AE = criterionAE:backward(fake_B, realGray_B)
+	netG:backward(real_AC, df_dg + df_dg_AE:mul(opt.lambda))   
 
 	return errG, gradParametersG
 end
@@ -625,41 +581,36 @@ end
 local fSSx = function(x)
 	gradParametersSS:zero()
 
-	local df_dg = torch.zeros(fake_B:size())
+	-- GAN loss
+	local df_dg = torch.zeros(erfnet_C:size())
 	if opt.gpu>0 then 
 		df_dg = df_dg:cuda();
 	end
-	local df_ddyn = torch.zeros(fake_C:size())
-	if opt.gpu>0 then 
-		df_ddyn = df_ddyn:cuda();
-	end
-	local df_derf = torch.zeros(erfnet_C:size())
-	if opt.gpu>0 then 
-		df_derf = df_derf:cuda();
-	end
-	local df_dy = torch.zeros(realRGB_A:size())
-	if opt.gpu>0 then 
-		df_dy = df_dy:cuda();
-	end
 
-	local output = netD.output -- last call of netD:forward{input_A,input_B} was already executed in fDx, so save computation (with the fake result)
 	local label = torch.FloatTensor(output:size()):fill(real_label) -- fake labels are real for SS cost
 	if opt.gpu>0 then 
 		label = label:cuda();
 	end
-	local outputReal = netReal.output
-	errSS = criterion:forward(outputReal, label)
-	local df_do = criterion:backward(outputReal, label)
-	local df_dx = netReal:updateGradInput(output, df_do)
-	df_dg = netD:updateGradInput(fake_AB, df_dx):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
-	df_ddyn = netG:updateGradInput(fake_C, df_dg):narrow(2,fake_C:size(2)-output_gan_nc+1, output_gan_nc)
-	df_derf = netDynSS:updateGradInput(erfnet_C, df_ddyn)
-	
+
+	output = nsynthD_Real.output
+
+	errSS = criterion:forward(output, label)
+	local df_do = criterion:backward(output, label)
+	local df_dp = netD:updateGradInput(fake_AB, df_do):narrow(2,fake_AB:size(2)-output_gan_nc+1, output_gan_nc)
+	local df_dq = netG:updateGradInput(real_AC,df_dp):narrow(2, real_AC:size(2) - mask_nc + 1, mask_nc)
+	df_dg = netDynSS:updateGradInput(erfnet_C,df_dq)
+
+	-- SS loss
+	local df_dg_SS = torch.zeros(erfnet_C:size())
+	if opt.gpu>0 then 
+		df_dg_SS = df_dg_SS:cuda();
+	end
+
 	fake_C = netSS.output
 	errERFNet = criterionSS:forward(erfnet_C, real_C[1])
-	df_dy = criterionSS:backward(erfnet_C, real_C[1])
+	df_dg_SS = criterionSS:backward(erfnet_C, real_C[1])
 
-	netSS:backward(realBGR_A, df_derf + df_dy:mul(opt.lambdaSS))
+	netSS:backward(realBGR_A, df_dg + df_dg_SS:mul(opt.lambdaSS))
 
 	return errSS, gradParametersSS
 end
