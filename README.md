@@ -110,22 +110,7 @@ python scripts/setup/combineCARLA.py --fold_A /path/to/output/A/ --fold_B /path/
 ```bash
 bash scripts/setup/combineCITYSCAPES.py --fold_A /path/to/CITYSCAPES/leftImg8bit_trainvaltest/leftImg8bit/train --fold_B /path/to/CITYSCAPES/gtFine_trainvaltest/gtFine/train --fold_AB /path/to/output/train
 ```
-**Further notes**: We provide a small dataset within `/datasets` as an example. For a good performance the training dataset should consist of many more images.
-
-## Display UI
-Optionally, for displaying images during training and test, use the [display package](https://github.com/szym/display).
-
-- Install it with: `luarocks install https://raw.githubusercontent.com/szym/display/master/display-scm-0.rockspec`
-- Then start the server with: `th -ldisplay.start`
-- Open this URL in your browser: [http://localhost:8000](http://localhost:8000)
-
-By default, the server listens on localhost. Pass `0.0.0.0` to allow external connections on any interface:
-```bash
-th -ldisplay.start 8000 0.0.0.0
-```
-Then open `http://(hostname):(port)/` in your browser to load the remote desktop.
-
-L1 error is plotted to the display by default. Set the environment variable `display_plot` to a comma-seperated list of values `errL1`, `errG` and `errD` to visualize the L1, generator, and descriminator error respectively. For example, to plot only the generator and descriminator errors to the display instead of the default L1 error, set `display_plot="errG,errD"`.
+**Further notes**: Also, you can download a small dataset from [here](https://drive.google.com/open?id=1XkgElMx4kgyhSNWgoarhBvKKDLuYkJ2o). Note that this dataset is valid for testing, but it contains very few images for training.
 
 ## Citation
 If you use this code for your research, please cite our paper Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space</a>:
@@ -140,6 +125,6 @@ If you use this code for your research, please cite our paper Empty Cities: Imag
 ```
 
 ## Acknowledgments
-Our code is heavily inspired by [pix2pix](https://github.com/phillipi/pix2pix), [DCGAN](https://github.com/soumith/dcgan.torch) and [Context-Encoder](https://github.com/pathak22/context-encoder).
+Our code is heavily inspired by [pix2pix](https://github.com/phillipi/pix2pix).
 
 # EmptyCities
