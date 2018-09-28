@@ -1,4 +1,7 @@
 #!/bin/bash
+# Copyright (C) 2018 Berta Bescos 
+# <bbescos at unizar dot es> (University of Zaragoza)
+#
 
 dir="$1"
 echo $dir

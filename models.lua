@@ -1,3 +1,7 @@
+-- Copyright (C) 2018 Berta Bescos 
+-- <bbescos at unizar dot es> (University of Zaragoza)
+--
+
 require 'nngraph'
 
 function defineG_encoder_decoder(input_nc, output_nc, ngf)

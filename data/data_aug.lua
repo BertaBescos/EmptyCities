@@ -1,3 +1,6 @@
+-- Copyright (C) 2018 Berta Bescos 
+-- <bbescos at unizar dot es> (University of Zaragoza)
+--
 
 require 'image'
 require 'torch'

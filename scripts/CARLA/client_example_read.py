@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+#This script is a modified version of the one from CARLA
+#
 # Copyright (c) 2017 Computer Vision Center (CVC) at the Universitat Autonoma de
 # Barcelona (UAB).
 #

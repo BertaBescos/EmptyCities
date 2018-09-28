@@ -1,3 +1,7 @@
+# Copyright (C) 2018 Berta Bescos 
+# <bbescos at unizar dot es> (University of Zaragoza)
+#
+
 from pdb import set_trace as st
 import os
 import numpy as np
