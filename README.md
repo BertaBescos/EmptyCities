@@ -1,7 +1,7 @@
 
 # EmptyCities
 
-[[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]]()
+[[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]](https://arxiv.org/pdf/1809.10239.pdf)
 
 Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static. In the example below, the top images are fed one by one into our model. The bottom row are the obtained results:
 
@@ -31,9 +31,7 @@ cd EmptyCities
 
 ### Models
 Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
-- `mGAN`: trained only on synthetic data coming from [CARLA](http://carla.org/).
-- `mGAN_DA`: trained on synthetic data coming from CARLA with data augmentation.
-- `mGAN_RD`: trained on synthectic data coming from CARLA and real data from the Cityscapes dataset. Real data is added during training with a probability of 0.5 from epoch 50 on.
+- `mGAN`: generative inpainting model.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
 
 ## Inference
@@ -42,21 +40,22 @@ Pre-trained models are found within the folder `/checkpoints`. You might need th
 ```bash
 input=/path/to/input/image/ qlua test.lua
 ```
-We provide some images in `/imgs` you can run our model on. For example:
+We provide some images in `/imgs/test` you can run our model on. For example:
 ```bash
-input=imgs/input.png qlua test.lua
+input=imgs/test/0.png qlua test.lua
 ```
+These images are from the [Cityscapes](https://www.cityscapes-dataset.com/) and the [SVS](https://svsdataset.github.io/) datasets.
 - You can also store the inpainted result and the binary mask that has been used.
 ```bash
 input=/path/to/input/image/ output=/path/to/output/image/ th test.lua
 ```
-In the following example the binary mask is stored in `/examples/output_mask.png`:
+In the following example the binary mask is stored in `/imgs/test/0_output_mask.png`:
 ```bash
-input=imgs/input.png output=imgs/output.png th test.lua
+input=imgs/test/0.png output=imgs/test/0_output.png th test.lua
 ```
 - If the stored mask is not accurate enough, you can provide yourself a better one:
 ```bash
-input=imgs/input.png mask=imgs/mask.png output=imgs/output.png th test.lua
+input=imgs/test/0.png mask=imgs/test/0_mask.png output=imgs/test/0_output.png th test.lua
 ```
 
 ## Test
@@ -64,6 +63,10 @@ input=imgs/input.png mask=imgs/mask.png output=imgs/output.png th test.lua
 - If you want to work with more than one image, we encourage you to keep your data in a folder of your choice `/path/to/data/` with three subfolders `train`, `test` and `val`. The following command will run our model within all the images inside the folder `test` and keep the results in `./results/mGAN`. Images within the folder `test` should be RGB images of any size.
 ```bash
 DATA_ROOT=/path/to/data/ th test.lua
+```
+For example:
+```bash
+DATA_ROOT=/imgs/ th test.lua
 ```
 - If you prefer to feed the dynamic/static binary masks, you should concatenate it to the RGB image. We provide a python script for this.
 ```bash
@@ -74,30 +77,6 @@ DATA_ROOT=/path/to/data/ mask=1 th test.lua
 DATA_ROOT=/path/to/data/ mask=1 target=1 th test.lua
 ```
 The test results will be saved to an html file here: `./results/mGAN/latest_net_G_val/index.html`.
-
-
-## Train
-
-- The simplest case trains only with synthetic CARLA data. In the subfolder `/path/to/synth/data/train/` there should be the concatenated (RGB | GT | Mask) images. The utilized masks come from this simulator too, and therefore do not use the semantic segmentation model.
-```bash
-DATA_ROOT=/path/to/synth/data/ th train.lua
-```
-- For better adaptation to real world images it is advisable to train the model with dynamic images from a real city. These images have no groundtruth static image pair, but have groundtruth semantic segmentation. The last one is used to finetune the semantic segmentation network ERFNet for our specific goal. Real data is introduced from `epoch_synth=50` on with a probability of `pNonSynth=0.5`.
-```bash
-DATA_ROOT=/path/to/synth/data/ NSYTNH_DATA_ROOT=/path/to/real/data/ epoch_synth=50 pNonSynth=0.5 th train.lua
-```
-- (CPU only) The same training command without using a GPU or CUDNN. Setting the environment variables `gpu=0 cudnn=0` forces CPU only
-```bash
-DATA_ROOT=/path/to/synth/data/ gpu=0 cudnn=0 th train.lua
-```
-- (Optionally) start the display server to view results as the model trains. ( See [Display UI](#display-ui) for more details):
-```bash
-th -ldisplay.start 8000 0.0.0.0
-```
-
-Models are saved by default to `./checkpoints/mGAN` (can be changed by passing `checkpoint_dir=your_dir` and `name=your_name` in train.lua).
-
-See `opt` in train.lua for additional training options.
 
 ## Datasets
 Our synthetic dataset has been generated with [CARLA 0.8.2](https://drive.google.com/file/d/1ZtVt1AqdyGxgyTm69nzuwrOYoPUn_Dsm/view). Within our folder `/scripts/CARLA` we provide some python and bash scripts to generate the paired images. The files `/scripts/CARLA/client_example_read.py` and `/scripts/CARLA/client_example_write.py` shoule be run instead of the `/PythonClient/client_example.py` provided in CARLA_0.8.2. Images with different weather conditions should be generated. 
