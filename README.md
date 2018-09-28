@@ -67,7 +67,7 @@ DATA_ROOT=/path/to/data/ th test.lua
 ```
 For example:
 ```bash
-DATA_ROOT=/imgs/ th test.lua
+DATA_ROOT=/path/to/EmptyCities/imgs/ th test.lua
 ```
 - If you prefer to feed the dynamic/static binary masks, you should concatenate it to the RGB image. We provide a python script for this.
 ```bash
