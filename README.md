@@ -18,7 +18,7 @@ Empty Cities: Image Inpainting for a Dynamic-Objects-Invariant Space
 
 ### Getting Started
 - Install torch and dependencies from https://github.com/torch/distro
-- Install torch packages `nngraph` and `display`
+- Install torch packages `nngraph` and `display`  (optional)
 ```bash
 luarocks install nngraph
 luarocks install https://raw.githubusercontent.com/szym/display/master/display-scm-0.rockspec
