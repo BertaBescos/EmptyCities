@@ -1,7 +1,8 @@
 -- usage: DATA_ROOT=/path/to/data/ th test.lua
--- usage: input=/path/to/input/image/ mask=/path/to/mask/ output=/path/to/output/ th test.lua
+-- usage: input=/path/to/input/image/ (mask=/path/to/mask/ output=/path/to/output/) th test.lua
 --
--- code derived from https://github.com/soumith/dcgan.torch
+-- Copyright (C) 2018 Berta Bescos 
+-- <bbescos at unizar dot es> (University of Zaragoza)
 --
 
 require 'image'
@@ -49,7 +50,7 @@ torch.manualSeed(opt.manualSeed)
 torch.setdefaulttensortype('torch.FloatTensor')
 
 opt.netG_name = opt.name .. '/' .. opt.which_epoch .. '_net_G'
-local netSS_name = 'SemSeg/erfnet.net'
+local netSS_name = 'SemSeg/' .. opt.which_epoch .. '_net_SS.net'
 
 -- useful function for debugging
 function pause ()
