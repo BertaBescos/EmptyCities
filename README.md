@@ -28,9 +28,10 @@ luarocks install https://raw.githubusercontent.com/szym/display/master/display-s
 git clone git@github.com:BertaBescos/EmptyCities.git
 cd EmptyCities
 ```
+You might need the GitHub package https://git-lfs.github.com/ to clone it.
 
 ### Models
-Pre-trained models are found within the folder `/checkpoints`. You might need the GitHub package https://git-lfs.github.com/ to download them.
+Pre-trained models are found within the folder `/checkpoints`. 
 - `mGAN`: generative inpainting model.
 - `SemSeg`: semantic segmentation model. The original model from [ERFNet](https://github.com/Eromera/erfnet) has been finetuned with our data.
 
