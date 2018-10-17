@@ -14,7 +14,7 @@ Empty Cities: Image Inpainting for a Dynamic-Objects-Invariant Space
 
 ### Prerequisites
 - Linux or OSX
-- NVIDIA GPU + CUDA CuDNN (CPU mode and CUDA without CuDNN may work with minimal modification, but untested)
+- NVIDIA GPU + CUDA CuDNN (CPU mode and CUDA without CuDNN may work with minimal modification, but untested). We used CUDA 8.0 and CuDNN 5. Other versions might work too with minimal modification, but untested.
 
 ### Getting Started
 - Install torch and dependencies from https://github.com/torch/distro
