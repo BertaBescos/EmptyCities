@@ -7,7 +7,7 @@ Torch implementation for learning a mapping from input images that contain dynam
 
 <img src="imgs/DynamicObjectsInvariantSpace.png" width="900px"/>
 
-Empty Cities: Image Inpainting for a Dynamic-Objects-Invariant Space  
+Empty Cities: Image Inpainting for a Dynamic-Object-Invariant Space  
 [Berta Bescos](https://bertabescos.github.io/), [Jose Neira](http://webdiis.unizar.es/~neira/), [Roland Siegwart](http://www.asl.ethz.ch/the-lab/people/person-detail.html?persid=29981), [Cesar Cadena](http://n.ethz.ch/~cesarc/)  
 
 ## Setup
@@ -114,11 +114,11 @@ bash scripts/setup/combineCITYSCAPES.py --fold_A /path/to/CITYSCAPES/leftImg8bit
 **Further notes**: Also, you can download a small dataset from [here](https://drive.google.com/open?id=1XkgElMx4kgyhSNWgoarhBvKKDLuYkJ2o). Note that this dataset is valid for testing, but it contains very few images for training.
 
 ## Citation
-If you use this code for your research, please cite our paper Empty Cities: Image Inpainting for a Dynamic Objects Invariant Space</a>:
+If you use this code for your research, please cite our paper Empty Cities: Image Inpainting for a Dynamic-Object-Invariant Space</a>:
 
 ```
 @article{emptycities2018,
-  title={Empty Cities: Image Inpainting for a Dynamic-Objects-Invariant Space},
+  title={Empty Cities: Image Inpainting for a Dynamic-Object-Invariant Space},
   author={Bescos, Berta and Neira, José and Siegwart, Roland and Cadena, Cesar},
   journal={arXiv},
   year={2018}
