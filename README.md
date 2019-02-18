@@ -1,7 +1,7 @@
 
 # EmptyCities
 
-[[Project]](https://bertabescos.github.io/EmptyCities/)   [[Paper]](https://arxiv.org/pdf/1809.10239.pdf)
+[[Project]](https://bertabescos.github.io/EmptyCities/)   [[arXiv]](https://arxiv.org/abs/1809.10239)
 
 Torch implementation for learning a mapping from input images that contain dynamic objects in a city environment, such as vehicles and pedestrians, to output images which are static. In the example below, the top images are fed one by one into our model. The bottom row are the obtained results:
 
